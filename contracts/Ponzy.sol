@@ -469,7 +469,7 @@ contract Ponzy {
             users[userAddress].x6Matrix[level].secondLevelReferrals,
             users[userAddress].x6Matrix[level].blocked,
             users[userAddress].x6Matrix[level].closedPart,
-            users[userAddress].x3Matrix[level].reinvestCount
+            users[userAddress].x6Matrix[level].reinvestCount
         );
     }
 
