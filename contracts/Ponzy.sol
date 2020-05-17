@@ -53,6 +53,8 @@ contract Ponzy {
     // -----------------------------------------
 
     constructor (address ownerAddress) public {
+        require(ownerAddress != address(0), "constructor: owner address can not be 0x0 address");
+
         levelPrice[1] = 0.025 ether;
         for (uint8 i = 2; i <= LAST_LEVEL; i++) {
             levelPrice[i] = levelPrice[i-1] * 2;
@@ -93,7 +95,7 @@ contract Ponzy {
     // SETTERS
     // -----------------------------------------
 
-    function registrationExt(address referrerAddress) external payable {
+    function registration(address referrerAddress) external payable {
         _registration(msg.sender, referrerAddress);
     }
 
@@ -138,7 +140,7 @@ contract Ponzy {
     // -----------------------------------------
 
     function _registration(address userAddress, address referrerAddress) private {
-        require(msg.value == 0.05 ether, "registration cost 0.05");
+        require(msg.value == 0.05 ether, "registration cost 0.05 ETH");
         require(!_isUserExists(userAddress), "user exists");
         require(_isUserExists(referrerAddress), "referrer not exists");
 

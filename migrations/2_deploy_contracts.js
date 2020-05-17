@@ -1,5 +1,5 @@
 const Ponzy = artifacts.require('Ponzy.sol')
 
-module.exports = (deployer, network, accounts) => {
-
+module.exports = async (deployer, network, accounts) => {
+    await deployer.deploy(Ponzy, accounts[0])
 }

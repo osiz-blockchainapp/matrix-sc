@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
     "dotenv": "^8.2.0",
     "openzeppelin-test-helpers": "^0.5.1",
     "truffle": "^5.1.26",
