@@ -38,8 +38,8 @@ contract Ponzy {
     mapping(address => User) public users;
     mapping(uint256 => address) public idToAddress;
     mapping(uint256 => address) public userIds;
-    mapping(address => uint) public balances;
-    mapping(uint8 => uint) public levelPrice;
+    mapping(address => uint256) public balances;
+    mapping(uint8 => uint256) public levelPrice;
 
     event Registration(address indexed user, address indexed referrer, uint256 indexed userId, uint256 referrerId);
     event Reinvest(address indexed user, address indexed currentReferrer, address indexed caller, uint8 matrix, uint8 level);
@@ -65,7 +65,7 @@ contract Ponzy {
         User memory user = User({
             id: 1,
             referrer: address(0),
-            partnersCount: uint(0)
+            partnersCount: uint256(0)
         });
 
         users[ownerAddress] = user;
@@ -441,7 +441,12 @@ contract Ponzy {
         return users[userAddress].activeX6Levels[level];
     }
 
-    function usersX3Matrix(address userAddress, uint8 level) external view returns (address, address[] memory, bool, uint) {
+    function usersX3Matrix(address userAddress, uint8 level) external view returns (
+        address currentReferrer,
+        address[] memory referrals,
+        bool blocked,
+        uint256 reinvestCount
+    ) {
         return (
             users[userAddress].x3Matrix[level].currentReferrer,
             users[userAddress].x3Matrix[level].referrals,
@@ -450,13 +455,22 @@ contract Ponzy {
         );
     }
 
-    function usersX6Matrix(address userAddress, uint8 level) external view returns (address, address[] memory, address[] memory, bool, address, uint) {
-        return (users[userAddress].x6Matrix[level].currentReferrer,
-                users[userAddress].x6Matrix[level].firstLevelReferrals,
-                users[userAddress].x6Matrix[level].secondLevelReferrals,
-                users[userAddress].x6Matrix[level].blocked,
-                users[userAddress].x6Matrix[level].closedPart,
-                users[userAddress].x3Matrix[level].reinvestCount);
+    function usersX6Matrix(address userAddress, uint8 level) external view returns (
+        address currentReferrer,
+        address[] memory firstLevelReferrals,
+        address[] memory secondLevelReferrals,
+        bool blocked,
+        address closedPart,
+        uint256 reinvestCount
+    ) {
+        return (
+            users[userAddress].x6Matrix[level].currentReferrer,
+            users[userAddress].x6Matrix[level].firstLevelReferrals,
+            users[userAddress].x6Matrix[level].secondLevelReferrals,
+            users[userAddress].x6Matrix[level].blocked,
+            users[userAddress].x6Matrix[level].closedPart,
+            users[userAddress].x3Matrix[level].reinvestCount
+        );
     }
 
     function isUserExists(address user) external view returns (bool) {
