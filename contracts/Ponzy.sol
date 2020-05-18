@@ -171,8 +171,8 @@ contract Ponzy {
 
         address freeX3Referrer = _findFreeX3Referrer(userAddress, 1);
         users[userAddress].x3Matrix[1].currentReferrer = freeX3Referrer;
-        _updateX3Referrer(userAddress, freeX3Referrer, 1);
 
+        _updateX3Referrer(userAddress, freeX3Referrer, 1);
         _updateX6Referrer(userAddress, _findFreeX6Referrer(userAddress, 1), 1);
 
         emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
@@ -218,6 +218,7 @@ contract Ponzy {
     function _updateX6Referrer(address userAddress, address referrerAddress, uint8 level) private {
         require(users[referrerAddress].activeX6Levels[level], "500. Referrer level is inactive");
 
+        // ADD 2ND PLACE OF FIRST LEVEL (3 members available)
         if (users[referrerAddress].x6Matrix[level].firstLevelReferrals.length < 2) {
             users[referrerAddress].x6Matrix[level].firstLevelReferrals.push(userAddress);
             emit NewUserPlace(userAddress, referrerAddress, 2, level, uint8(users[referrerAddress].x6Matrix[level].firstLevelReferrals.length));
@@ -301,14 +302,18 @@ contract Ponzy {
     function _updateX6(address userAddress, address referrerAddress, uint8 level, bool x2) private {
         if (!x2) {
             users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.push(userAddress);
+
             emit NewUserPlace(userAddress, users[referrerAddress].x6Matrix[level].firstLevelReferrals[0], 2, level, uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.length));
             emit NewUserPlace(userAddress, referrerAddress, 2, level, 2 + uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.length));
+
             //set current level
             users[userAddress].x6Matrix[level].currentReferrer = users[referrerAddress].x6Matrix[level].firstLevelReferrals[0];
         } else {
             users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]].x6Matrix[level].firstLevelReferrals.push(userAddress);
+
             emit NewUserPlace(userAddress, users[referrerAddress].x6Matrix[level].firstLevelReferrals[1], 2, level, uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]].x6Matrix[level].firstLevelReferrals.length));
             emit NewUserPlace(userAddress, referrerAddress, 2, level, 4 + uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]].x6Matrix[level].firstLevelReferrals.length));
+
             //set current level
             users[userAddress].x6Matrix[level].currentReferrer = users[referrerAddress].x6Matrix[level].firstLevelReferrals[1];
         }
@@ -325,10 +330,10 @@ contract Ponzy {
             if (x6[0] == referrerAddress ||
                 x6[1] == referrerAddress) {
                 users[users[referrerAddress].x6Matrix[level].currentReferrer].x6Matrix[level].closedPart = referrerAddress;
-            } else if (x6.length == 1) {
-                if (x6[0] == referrerAddress) {
-                    users[users[referrerAddress].x6Matrix[level].currentReferrer].x6Matrix[level].closedPart = referrerAddress;
-                }
+            }
+        } else if (x6.length == 1) {
+            if (x6[0] == referrerAddress) {
+                users[users[referrerAddress].x6Matrix[level].currentReferrer].x6Matrix[level].closedPart = referrerAddress;
             }
         }
 
@@ -382,9 +387,7 @@ contract Ponzy {
     function _sendETHDividends(address userAddress, address _from, uint8 matrix, uint8 level) private {
         (address receiver, bool isExtraDividends) = _findEthReceiver(userAddress, _from, matrix, level);
 
-        if (!address(uint160(receiver)).send(levelPrice[level])) {
-            return address(uint160(receiver)).transfer(address(this).balance);
-        }
+        address(uint160(receiver)).transfer(levelPrice[level]);
 
         if (isExtraDividends) {
             emit SentExtraEthDividends(_from, receiver, matrix, level);
