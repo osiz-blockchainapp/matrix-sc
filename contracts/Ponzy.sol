@@ -55,10 +55,19 @@ contract Ponzy {
     constructor (address ownerAddress) public {
         require(ownerAddress != address(0), "constructor: owner address can not be 0x0 address");
 
+        // SETUP LEVELS AND VALUES
         levelPrice[1] = 0.025 ether;
-        for (uint8 i = 2; i <= LAST_LEVEL; i++) {
-            levelPrice[i] = levelPrice[i-1] * 2;
-        }
+        levelPrice[2] = 0.05 ether;
+        levelPrice[3] = 0.1 ether;
+        levelPrice[4] = 0.2 ether;
+        levelPrice[5] = 0.4 ether;
+        levelPrice[6] = 0.8 ether;
+        levelPrice[7] = 1.6 ether;
+        levelPrice[8] = 3.2 ether;
+        levelPrice[9] = 6.4 ether;
+        levelPrice[10] = 12.8 ether;
+        levelPrice[11] = 25.6 ether;
+        levelPrice[12] = 51.2 ether;
 
         owner = ownerAddress;
 
