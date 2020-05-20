@@ -105,34 +105,7 @@ contract Ponzy {
         require(msg.value == levelPrice[level], "invalid price");
         require(level > 1 && level <= LAST_LEVEL, "invalid level");
 
-        if (matrix == 1) {
-            require(!users[msg.sender].activeX3Levels[level], "level already activated");
-
-            if (users[msg.sender].x3Matrix[level-1].blocked) {
-                users[msg.sender].x3Matrix[level-1].blocked = false;
-            }
-
-            address freeX3Referrer = _findFreeX3Referrer(msg.sender, level);
-            users[msg.sender].x3Matrix[level].currentReferrer = freeX3Referrer;
-            users[msg.sender].activeX3Levels[level] = true;
-            _updateX3Referrer(msg.sender, freeX3Referrer, level);
-
-            emit Upgrade(msg.sender, freeX3Referrer, 1, level);
-
-        } else {
-            require(!users[msg.sender].activeX6Levels[level], "level already activated");
-
-            if (users[msg.sender].x6Matrix[level-1].blocked) {
-                users[msg.sender].x6Matrix[level-1].blocked = false;
-            }
-
-            address freeX6Referrer = _findFreeX6Referrer(msg.sender, level);
-
-            users[msg.sender].activeX6Levels[level] = true;
-            _updateX6Referrer(msg.sender, freeX6Referrer, level);
-
-            emit Upgrade(msg.sender, freeX6Referrer, 2, level);
-        }
+        _buyNewLevel(matrix, level);
     }
 
     // -----------------------------------------
@@ -176,6 +149,36 @@ contract Ponzy {
         _updateX6Referrer(userAddress, _findFreeX6Referrer(userAddress, 1), 1);
 
         emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
+    }
+
+    function _buyNewLevel(uint8 matrix, uint8 level) private {
+        if (matrix == 1) {
+            require(!users[msg.sender].activeX3Levels[level], "level already activated");
+
+            if (users[msg.sender].x3Matrix[level-1].blocked) {
+                users[msg.sender].x3Matrix[level-1].blocked = false;
+            }
+
+            address freeX3Referrer = _findFreeX3Referrer(msg.sender, level);
+            users[msg.sender].x3Matrix[level].currentReferrer = freeX3Referrer;
+            users[msg.sender].activeX3Levels[level] = true;
+            _updateX3Referrer(msg.sender, freeX3Referrer, level);
+
+            emit Upgrade(msg.sender, freeX3Referrer, 1, level);
+        } else {
+            require(!users[msg.sender].activeX6Levels[level], "level already activated");
+
+            if (users[msg.sender].x6Matrix[level-1].blocked) {
+                users[msg.sender].x6Matrix[level-1].blocked = false;
+            }
+
+            address freeX6Referrer = _findFreeX6Referrer(msg.sender, level);
+
+            users[msg.sender].activeX6Levels[level] = true;
+            _updateX6Referrer(msg.sender, freeX6Referrer, level);
+
+            emit Upgrade(msg.sender, freeX6Referrer, 2, level);
+        }
     }
 
     function _updateX3Referrer(address userAddress, address referrerAddress, uint8 level) private {
@@ -472,7 +475,7 @@ contract Ponzy {
             users[userAddress].x6Matrix[level].secondLevelReferrals,
             users[userAddress].x6Matrix[level].blocked,
             users[userAddress].x6Matrix[level].closedPart,
-            users[userAddress].x6Matrix[level].reinvestCount
+            users[userAddress].x3Matrix[level].reinvestCount
         );
     }
 
