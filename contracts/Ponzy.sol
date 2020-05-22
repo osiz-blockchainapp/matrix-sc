@@ -609,8 +609,6 @@ contract PonzyAuto {
             return root.transfer(value);
         }
 
-        uint256 next_price = levels[users[upline].level + 1];
-
         // Re-Invest check
         if (users[upline].referrals.length == 3 && users[upline].referrals[2] == msg.sender) {
             // Transfer funds to upline of msg.senders' upline
@@ -625,15 +623,10 @@ contract PonzyAuto {
 
             // If upline level limit reached
             if (users[upline].profit >= levelMaxCap) {
-                // If all levels achived
-                if (users[upline].level == levels.length - 1) {
-                    _uplinePay(users[upline].upline, value);
-                } else {
-                    users[upline].profit = 0;
+                users[upline].profit = 0;
 
-                    _upLevel(upline, users[upline].level + 1);
-                    _uplinePay(users[upline].upline, levelMaxCap);
-                }
+                _upLevel(upline, users[upline].level + 1);
+                _uplinePay(users[upline].upline, levelMaxCap);
             }
         }
     }
