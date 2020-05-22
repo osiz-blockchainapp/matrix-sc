@@ -494,12 +494,12 @@ contract Ponzy {
 }
 
 contract PonzyAuto {
+    enum SystemType { X3, X4 }
 
     struct User {
         uint256 id;
         uint256 upline_id;
         address upline;
-        uint256 balance;
         uint256 profit;
         uint8 level;
         address[] referrals;
@@ -556,6 +556,11 @@ contract PonzyAuto {
         _register(msg.sender, msg.value);
     }
 
+    function destruct() external {
+        require(msg.sender == root, "Access denied");
+        selfdestruct(root);
+    }
+
     // -----------------------------------------
     // PRIVATE
     // -----------------------------------------
@@ -566,7 +571,7 @@ contract PonzyAuto {
         require(users[user].id == 0, "User already exists");
 
         // Get upline ID of user
-        uint256 uplineId = _detectUplineId(last_id + 1);
+        uint256 uplineId = _detectUplineId(last_id + 1, SystemType.X3);
         address upline = users_ids[uplineId];
 
         // Create new user
@@ -574,6 +579,8 @@ contract PonzyAuto {
 
         // Increase level of user
         _upLevel(user, users[user].level);
+
+        // Check the state and pay to uplines
         _uplinePay(upline, value);
     }
 
@@ -581,7 +588,7 @@ contract PonzyAuto {
         users[user].id = ++last_id;
         users_ids[last_id] = user;
 
-        if(users[upline].id > 0) {
+        if (users[upline].id > 0) {
             users[user].upline_id = users[upline].id;
             users[user].upline = upline;
             users[upline].referrals.push(user);
@@ -592,89 +599,71 @@ contract PonzyAuto {
 
     function _upLevel(address user, uint8 level) private {
         users[user].level = level;
+
         emit UpLevel(user, level);
     }
     
     function _uplinePay(address upline, uint256 value) private {
-        bool isLevelsAvailable = users[upline].level < levels.length - 1;
+        // If upline not defined
+        if (upline == address(0)) {
+            return root.transfer(value);
+        }
+
         uint256 next_price = levels[users[upline].level + 1];
 
-        if (isLevelsAvailable) {
+        // Re-Invest check
+        if (users[upline].referrals.length == 3 && users[upline].referrals[2] == msg.sender) {
+            // Transfer funds to upline of msg.senders' upline
+            address reinvestReceiver = users[upline].upline == address(0) ? root : users[upline].upline;
+            _send(reinvestReceiver, value);
+        } else {
+            // Increase upgrade profit of users' upline 
+            users[upline].profit += value;
 
-            if (next_price > users[upline].profit) {
-                uint256 max_value = next_price - users[upline].profit;
-                uint256 profit = value;
+            // The limit, which needed to my upline for achieving a new level
+            uint256 levelMaxCap = levels[users[upline].level + 1];
 
-                if(max_value < profit) {
-                    profit = max_value;
-                }
-                
-                users[upline].profit += profit;
-                value -= profit;
-
-                _send(upline, profit);
-                
-                emit Profit(upline, tx.origin, profit);
-            }
-
-            if (value > 0) {
-                uint256 b = users[upline].balance + value; // 0.1
-
-                if (b >= next_price) {
-                    users[upline].balance = 0;
+            // If upline level limit reached
+            if (users[upline].profit >= levelMaxCap) {
+                // If all levels achived
+                if (users[upline].level == levels.length - 1) {
+                    _uplinePay(users[upline].upline, value);
+                } else {
                     users[upline].profit = 0;
 
-                    if (b > next_price) {
-                        uint256 p = b - next_price;
-                        b -= p;
-
-                        users[upline].profit += p;
-
-                        _send(upline, p);
-                        
-                        emit Profit(upline, tx.origin, p);
-                    }
-
                     _upLevel(upline, users[upline].level + 1);
-                    _uplinePay(users[upline].upline, b);
-                } else {
-                    users[upline].balance += value;
+                    _uplinePay(users[upline].upline, levelMaxCap);
                 }
-            }
-        } else {
-            if (users[upline].profit < next_price) {
-                users[upline].profit += value;
-
-                _send(upline, value);
-
-                emit Profit(upline, tx.origin, value);
-            } else {
-                _uplinePay(users[upline].upline, value);
             }
         }
     }
 
     function _send(address to, uint256 value) private {
         require(to != address(0), "Zero address");
-
-        if(address(uint160(to)).send(value - 0.01 ether)) {
-            root.transfer(value);
-        }
-        else root.transfer(0.01 ether);
+        address(uint160(to)).transfer(value);
     }
 
-    function _detectUplineId(uint256 id) private pure returns(uint256) {
-        if (id % 3 == 0) return id / 3;
-        else if (id % 3 == 1) return (id - 1) / 3;
-        else if (id % 3 == 2) return (id + 1) / 3;
+    function _detectUplineId(uint256 id, SystemType x) private pure returns(uint256) {
+        // If root address required
+        if (id == 1) return 1;
+
+        if (x == SystemType.X3) {
+            if (id % 3 == 0) return id / 3;
+            else if (id % 3 == 1) return (id - 1) / 3;
+            else if (id % 3 == 2) return (id + 1) / 3;
+        } else {
+            if (id % 2 == 0) return id / 2;
+            else return (id - 1) / 2;
+        }
+    }
+
+    function _isReinvestUser(uint256 userId) private pure returns(bool) {
+        if ((userId - 1) % 3 == 0) return true;
+        else return false;
     }
 
     // -----------------------------------------
     // GETTERS
     // -----------------------------------------
 
-    function destruct() external {
-        require(msg.sender == root, "Access denied");
-        selfdestruct(root);
-    }
 }
