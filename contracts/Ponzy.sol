@@ -497,11 +497,11 @@ contract PonzyAuto {
     struct User {
         uint256 id;
 
-        X3 x3;
-        X4 x4;
+        X3_AUTO x3Auto;
+        X4_AUTO x4Auto;
     }
 
-    struct X3 {
+    struct X3_AUTO {
         uint8 level;
         uint256 upline_id;
         address upline;
@@ -509,7 +509,7 @@ contract PonzyAuto {
         address[] referrals;
     }
 
-    struct X4 {
+    struct X4_AUTO {
         uint8 level;
         uint256 upline_id;
         address upline;
@@ -518,40 +518,38 @@ contract PonzyAuto {
         address[] secondLevelReferrals;
     }
 
-    address payable public root;
-    uint256 public last_id;
+    address payable public owner;
+    uint256 public lastUserId = 2;
 
-    uint256[] public levels;
     mapping(address => User) private users;
-    mapping(uint256 => address) public users_ids;
-
-    event Register(address indexed addr, address indexed x3Upline, address indexed x4Upline, uint256 id);
-    event x3UpLevel(address indexed addr, uint8 level);
-    event x4UpLevel(address indexed addr, uint8 level);
-    event Profit(address indexed addr, address indexed referral, uint256 value);
-    event Lost(address indexed addr, address indexed referral, uint256 value);
+    mapping(uint256 => address) public idToAddress;
+    mapping(uint8 => uint256) public levelPrice;
 
     // -----------------------------------------
     // CONSTRUCTOR
     // -----------------------------------------
 
     constructor() public {
-        levels.push(0.025 ether);
-        levels.push(0.05 ether);
-        levels.push(0.1 ether);
-        levels.push(0.2 ether);
-        levels.push(0.4 ether);
-        levels.push(0.8 ether);
-        levels.push(1.6 ether);
-        levels.push(3.2 ether);
-        levels.push(6.4 ether);
-        levels.push(12.8 ether);
-        levels.push(25.6 ether);
-        levels.push(51.2 ether);
+        levelPrice[1] = 0.025 ether;
+        levelPrice[2] = 0.05 ether;
+        levelPrice[3] = 0.1 ether;
+        levelPrice[4] = 0.2 ether;
+        levelPrice[5] = 0.4 ether;
+        levelPrice[6] = 0.8 ether;
+        levelPrice[7] = 1.6 ether;
+        levelPrice[8] = 3.2 ether;
+        levelPrice[9] = 6.4 ether;
+        levelPrice[10] = 12.8 ether;
+        levelPrice[11] = 25.6 ether;
+        levelPrice[12] = 51.2 ether;
 
-        root = msg.sender;
+        owner = msg.sender;
 
-        _newUser(root, address(0), address(0));
+        idToAddress[1] = owner;
+        users[owner].id = 1;
+
+        _x3AutoUpLevel(owner, 1);
+        _x4AutoUpLevel(owner, 1);
     }
 
     // -----------------------------------------
@@ -571,8 +569,8 @@ contract PonzyAuto {
     }
 
     function destruct() external {
-        require(msg.sender == root, "Access denied");
-        selfdestruct(root);
+        require(msg.sender == owner, "Access denied");
+        selfdestruct(owner);
     }
 
     // -----------------------------------------
@@ -580,139 +578,132 @@ contract PonzyAuto {
     // -----------------------------------------
 
     function _register(address user, uint256 value) private {
-        require(value == levels[0] * 2, "Bad value");
-        require(user != root, "Is root");
+        require(user != owner, "Is owner");
         require(users[user].id == 0, "User already exists");
 
         // Get upline ID of user
-        (address x3Upline, address x4Upline) = _detectUplinesAddresses(last_id + 1);
+        (address x3AutoUpline, address x4AutoUpline) = _detectUplinesAddresses(lastUserId + 1);
 
         // Create new user
-        _newUser(user, x3Upline, x4Upline);
+        _newUser(user, x3AutoUpline, x4AutoUpline);
 
         // Increase level of user
-        _x3UpLevel(user, users[user].x3.level);
-        _x4UpLevel(user, users[user].x4.level);
+        _x3AutoUpLevel(user, 1);
+        _x4AutoUpLevel(user, 1);
 
         // Check the state and pay to uplines
-        _x3uplinePay(value, x3Upline);
-        _x4uplinePay(value, x4Upline);
+        _x3AutouplinePay(value, x3AutoUpline);
+        _x4AutouplinePay(value, x4AutoUpline);
     }
 
-    function _newUser(address user, address x3Upline, address x4Upline) private {
-        users[user].id = ++last_id;
-        users_ids[last_id] = user;
+    function _newUser(address user, address x3AutoUpline, address x4AutoUpline) private {
+        // Register x3Auto values
+        users[user].x3Auto.upline = x3AutoUpline;
+        users[user].x3Auto.upline_id = users[x3AutoUpline].id;
 
-        if (last_id > 1) {
-            // Register x3 values
-            users[user].x3.upline = x3Upline;
-            users[user].x3.upline_id = users[x3Upline].id;
+        // Add member to x3Auto upline referrals
+        users[x3AutoUpline].x3Auto.referrals.push(user);
 
-            // Add member to x3 upline referrals
-            users[x3Upline].x3.referrals.push(user);
+        // Register x4Auto values
+        users[user].x4Auto.upline = x4AutoUpline;
+        users[user].x4Auto.upline_id = users[x4AutoUpline].id;
 
-            // Register x4 values
-            users[user].x4.upline = x4Upline;
-            users[user].x4.upline_id = users[x4Upline].id;
+        // Add member to x4Auto upline first referrals and second line referalls
+        users[x4AutoUpline].x4Auto.firstLevelReferrals.push(user);
+        users[users[x4AutoUpline].x4Auto.upline].x4Auto.secondLevelReferrals.push(user);
 
-            // Add member to x4 upline first referrals and second line referalls
-            users[x4Upline].x4.firstLevelReferrals.push(user);
-            users[users[x4Upline].x4.upline].x4.secondLevelReferrals.push(user);
-        }
-
-        emit Register(user, x3Upline, x4Upline, last_id);
+        idToAddress[lastUserId] = user;
+        users[user].id = ++lastUserId;
     }
 
-    function _x3UpLevel(address user, uint8 level) private {
-        users[user].x3.level = level;
-        emit x3UpLevel(user, level);
+    function _x3AutoUpLevel(address user, uint8 level) private {
+        users[user].x3Auto.level = level;
     }
 
-    function _x4UpLevel(address user, uint8 level) private {
-        users[user].x4.level = level;
-        emit x4UpLevel(user, level);
+    function _x4AutoUpLevel(address user, uint8 level) private {
+        users[user].x4Auto.level = level;
     }
 
-    function _x3uplinePay(uint256 value, address upline) private {
+    function _x3AutouplinePay(uint256 value, address upline) private {
         // If upline not defined
         if (upline == address(0)) {
-            return root.transfer(value);
+            return owner.transfer(value);
         }
 
         // Re-Invest check
-        if (users[upline].x3.referrals[2] == msg.sender && users[upline].x3.referrals.length == 3) {
+        if (users[upline].x3Auto.referrals[2] == msg.sender && users[upline].x3Auto.referrals.length == 3) {
             // Transfer funds to upline of msg.senders' upline
-            address reinvestReceiver = users[upline].x3.upline == address(0) ? root : users[upline].x3.upline;
+            address reinvestReceiver = users[upline].x3Auto.upline == address(0) ? owner : users[upline].x3Auto.upline;
             _send(reinvestReceiver, value);
         } else {
             // Increase upgrade profit of users' upline
-            users[upline].x3.profit += value;
+            users[upline].x3Auto.profit += value;
 
             // The limit, which needed to my upline for achieving a new level
-            uint256 levelMaxCap = levels[users[upline].x3.level + 1];
+            uint256 levelMaxCap = levelPrice[users[upline].x3Auto.level + 1];
 
             // If upline level limit reached
-            if (users[upline].x3.profit >= levelMaxCap) {
-                users[upline].x3.profit = 0;
+            if (users[upline].x3Auto.profit >= levelMaxCap) {
+                users[upline].x3Auto.profit = 0;
 
-                _x3UpLevel(upline, users[upline].x3.level + 1);
-                _x3uplinePay(levelMaxCap, users[upline].x3.upline);
+                _x3AutoUpLevel(upline, users[upline].x3Auto.level + 1);
+                _x3AutouplinePay(levelMaxCap, users[upline].x3Auto.upline);
             }
         }
     }
 
-    function _x4uplinePay(uint256 value, address upline) private {
+    function _x4AutouplinePay(uint256 value, address upline) private {
         // If upline not defined
         if (upline == address(0)) {
-            return root.transfer(value);
+            return owner.transfer(value);
         }
 
-        address reinvestReceiver = _getX4ReinvestReceiver(users[upline].id);
+        address reinvestReceiver = _getX4_AUTOReinvestReceiver(users[upline].id);
         
-        bool isReinvest = users[users[upline].x4.upline].x4.secondLevelReferrals.length == 3 && users[users[upline].x4.upline].x4.secondLevelReferrals[2] == msg.sender;
-        bool isEarning = users[users[upline].x4.upline].x4.secondLevelReferrals.length == 4 && users[users[upline].x4.upline].x4.secondLevelReferrals[3] == msg.sender;
-        bool isUpgrade = users[users[upline].x4.upline].x4.secondLevelReferrals.length < 3 && users[users[upline].x4.upline].x4.firstLevelReferrals.length == 2;
+        bool isReinvest = users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals.length == 3 && users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals[2] == msg.sender;
+        bool isEarning = users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals.length == 4 && users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals[3] == msg.sender;
+        bool isUpgrade = users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals.length < 3 && users[users[upline].x4Auto.upline].x4Auto.firstLevelReferrals.length == 2;
         
         if (isReinvest) {
             _send(reinvestReceiver, value);
         } else if (isEarning) {
-            _send(users[upline].x4.upline, value);
+            _send(users[upline].x4Auto.upline, value);
         } else if (isUpgrade) {
-            uint256 levelMaxCap = levels[users[reinvestReceiver].x4.level + 1];
+            uint256 levelMaxCap = levelPrice[users[reinvestReceiver].x4Auto.level + 1];
 
             // If upline level limit reached
-            if (users[reinvestReceiver].x4.profit >= levelMaxCap) {
-                users[reinvestReceiver].x4.profit = 0;
+            if (users[reinvestReceiver].x4Auto.profit >= levelMaxCap) {
+                users[reinvestReceiver].x4Auto.profit = 0;
 
-                _x4UpLevel(upline, users[upline].x3.level + 1);
-                _x4uplinePay(levelMaxCap, reinvestReceiver);
+                _x4AutoUpLevel(upline, users[upline].x3Auto.level + 1);
+                _x4AutouplinePay(levelMaxCap, reinvestReceiver);
             }        
         }
     }
 
     function _detectUplinesAddresses(uint256 id) private view returns(address, address) {
-        address x3UplineAddress = root;
-        address x4UplineAddress = root;
+        address x3AutoUplineAddress = owner;
+        address x4AutoUplineAddress = owner;
 
-        // If root address required
-        if (id == 1) return (x3UplineAddress, x4UplineAddress);
+        // If owner address required
+        if (id == 1) return (x3AutoUplineAddress, x4AutoUplineAddress);
 
-        // Get X3 upline
-        if (id % 3 == 0)        x3UplineAddress = users_ids[id / 3];
-        else if (id % 3 == 1)   x3UplineAddress = users_ids[(id - 1) / 3];
-        else if (id % 3 == 2)   x3UplineAddress = users_ids[(id + 1) / 3];
+        // Get X3_AUTO upline
+        if (id % 3 == 0)        x3AutoUplineAddress = idToAddress[id / 3];
+        else if (id % 3 == 1)   x3AutoUplineAddress = idToAddress[(id - 1) / 3];
+        else if (id % 3 == 2)   x3AutoUplineAddress = idToAddress[(id + 1) / 3];
 
-        // Get X4 upline
-        if (id % 2 == 0)        x4UplineAddress = users_ids[id / 2];
-        else x4UplineAddress =  x4UplineAddress = users_ids[(id - 1) / 2];
+        // Get X4_AUTO upline
+        if (id % 2 == 0)        x4AutoUplineAddress = idToAddress[id / 2];
+        else x4AutoUplineAddress =  x4AutoUplineAddress = idToAddress[(id - 1) / 2];
 
         return (
-            x3UplineAddress,
-            x4UplineAddress
+            x3AutoUplineAddress,
+            x4AutoUplineAddress
         );
     }
 
-    function _getX4ReinvestReceiver(uint256 id) private view returns (address) {
+    function _getX4_AUTOReinvestReceiver(uint256 id) private view returns (address) {
         if (id > 31) {
             uint256 reinvestReceiverId = id;
 
@@ -721,9 +712,9 @@ contract PonzyAuto {
                 reinvestReceiverId /= 2;
             }
 
-            return users_ids[reinvestReceiverId];
+            return idToAddress[reinvestReceiverId];
         } else {
-            return root;
+            return owner;
         }
     }
 
@@ -736,7 +727,7 @@ contract PonzyAuto {
     // GETTERS
     // -----------------------------------------
 
-    function getUserX3(address user) external view returns (
+    function getUserX3_AUTO(address user) external view returns (
         uint256 id,
         uint8 level,
         uint256 upline_id,
@@ -746,15 +737,15 @@ contract PonzyAuto {
     ) {
         return (
             users[user].id,
-            users[user].x3.level,
-            users[user].x3.upline_id,
-            users[user].x3.upline,
-            users[user].x3.profit,
-            users[user].x3.referrals
+            users[user].x3Auto.level,
+            users[user].x3Auto.upline_id,
+            users[user].x3Auto.upline,
+            users[user].x3Auto.profit,
+            users[user].x3Auto.referrals
         );
     }
     
-    function getUserX4(address user) external view returns (
+    function getUserX4_AUTO(address user) external view returns (
         uint256 id,
         uint8 level,
         uint256 upline_id,
@@ -765,12 +756,12 @@ contract PonzyAuto {
     ) {
         return (
             users[user].id,
-            users[user].x4.level,
-            users[user].x4.upline_id,
-            users[user].x4.upline,
-            users[user].x4.profit,
-            users[user].x4.firstLevelReferrals,
-            users[user].x4.secondLevelReferrals
+            users[user].x4Auto.level,
+            users[user].x4Auto.upline_id,
+            users[user].x4Auto.upline,
+            users[user].x4Auto.profit,
+            users[user].x4Auto.firstLevelReferrals,
+            users[user].x4Auto.secondLevelReferrals
         );
     }
 }
