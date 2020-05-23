@@ -12,10 +12,10 @@ contract Ponzy {
         uint256 partnersCount;
 
         mapping(uint8 => bool) activeX3Levels;
-        mapping(uint8 => bool) activeX6Levels;
+        mapping(uint8 => bool) activeX4Levels;
 
         mapping(uint8 => X3) x3Matrix;
-        mapping(uint8 => X6) x6Matrix;
+        mapping(uint8 => X4) x4Matrix;
     }
 
     struct X3 {
@@ -25,7 +25,7 @@ contract Ponzy {
         uint256 reinvestCount;
     }
 
-    struct X6 {
+    struct X4 {
         address currentReferrer;
         address[] firstLevelReferrals;
         address[] secondLevelReferrals;
@@ -82,7 +82,7 @@ contract Ponzy {
 
         for (uint8 i = 1; i <= LAST_LEVEL; i++) {
             users[ownerAddress].activeX3Levels[i] = true;
-            users[ownerAddress].activeX6Levels[i] = true;
+            users[ownerAddress].activeX4Levels[i] = true;
         }
 
         userIds[1] = ownerAddress;
@@ -144,7 +144,7 @@ contract Ponzy {
         users[userAddress].referrer = referrerAddress;
 
         users[userAddress].activeX3Levels[1] = true;
-        users[userAddress].activeX6Levels[1] = true;
+        users[userAddress].activeX4Levels[1] = true;
 
         userIds[lastUserId] = userAddress;
         lastUserId++;
@@ -155,7 +155,7 @@ contract Ponzy {
         users[userAddress].x3Matrix[1].currentReferrer = freeX3Referrer;
 
         _updateX3Referrer(userAddress, freeX3Referrer, 1);
-        _updateX6Referrer(userAddress, _findFreeX6Referrer(userAddress, 1), 1);
+        _updateX4Referrer(userAddress, _findFreeX4Referrer(userAddress, 1), 1);
 
         emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
     }
@@ -175,18 +175,18 @@ contract Ponzy {
 
             emit Upgrade(msg.sender, freeX3Referrer, 1, level);
         } else {
-            require(!users[msg.sender].activeX6Levels[level], "level already activated");
+            require(!users[msg.sender].activeX4Levels[level], "level already activated");
 
-            if (users[msg.sender].x6Matrix[level-1].blocked) {
-                users[msg.sender].x6Matrix[level-1].blocked = false;
+            if (users[msg.sender].x4Matrix[level-1].blocked) {
+                users[msg.sender].x4Matrix[level-1].blocked = false;
             }
 
-            address freeX6Referrer = _findFreeX6Referrer(msg.sender, level);
+            address freeX4Referrer = _findFreeX4Referrer(msg.sender, level);
 
-            users[msg.sender].activeX6Levels[level] = true;
-            _updateX6Referrer(msg.sender, freeX6Referrer, level);
+            users[msg.sender].activeX4Levels[level] = true;
+            _updateX4Referrer(msg.sender, freeX4Referrer, level);
 
-            emit Upgrade(msg.sender, freeX6Referrer, 2, level);
+            emit Upgrade(msg.sender, freeX4Referrer, 2, level);
         }
     }
 
@@ -227,143 +227,143 @@ contract Ponzy {
         }
     }
 
-    function _updateX6Referrer(address userAddress, address referrerAddress, uint8 level) private {
-        require(users[referrerAddress].activeX6Levels[level], "500. Referrer level is inactive");
+    function _updateX4Referrer(address userAddress, address referrerAddress, uint8 level) private {
+        require(users[referrerAddress].activeX4Levels[level], "500. Referrer level is inactive");
 
         // ADD 2ND PLACE OF FIRST LEVEL (3 members available)
-        if (users[referrerAddress].x6Matrix[level].firstLevelReferrals.length < 2) {
-            users[referrerAddress].x6Matrix[level].firstLevelReferrals.push(userAddress);
-            emit NewUserPlace(userAddress, referrerAddress, 2, level, uint8(users[referrerAddress].x6Matrix[level].firstLevelReferrals.length));
+        if (users[referrerAddress].x4Matrix[level].firstLevelReferrals.length < 2) {
+            users[referrerAddress].x4Matrix[level].firstLevelReferrals.push(userAddress);
+            emit NewUserPlace(userAddress, referrerAddress, 2, level, uint8(users[referrerAddress].x4Matrix[level].firstLevelReferrals.length));
 
             //set current level
-            users[userAddress].x6Matrix[level].currentReferrer = referrerAddress;
+            users[userAddress].x4Matrix[level].currentReferrer = referrerAddress;
 
             if (referrerAddress == owner) {
                 return _sendETHDividends(referrerAddress, userAddress, 2, level);
             }
 
-            address ref = users[referrerAddress].x6Matrix[level].currentReferrer;
-            users[ref].x6Matrix[level].secondLevelReferrals.push(userAddress);
+            address ref = users[referrerAddress].x4Matrix[level].currentReferrer;
+            users[ref].x4Matrix[level].secondLevelReferrals.push(userAddress);
 
-            uint256 len = users[ref].x6Matrix[level].firstLevelReferrals.length;
+            uint256 len = users[ref].x4Matrix[level].firstLevelReferrals.length;
 
             if ((len == 2) &&
-                (users[ref].x6Matrix[level].firstLevelReferrals[0] == referrerAddress) &&
-                (users[ref].x6Matrix[level].firstLevelReferrals[1] == referrerAddress)) {
-                if (users[referrerAddress].x6Matrix[level].firstLevelReferrals.length == 1) {
+                (users[ref].x4Matrix[level].firstLevelReferrals[0] == referrerAddress) &&
+                (users[ref].x4Matrix[level].firstLevelReferrals[1] == referrerAddress)) {
+                if (users[referrerAddress].x4Matrix[level].firstLevelReferrals.length == 1) {
                     emit NewUserPlace(userAddress, ref, 2, level, 5);
                 } else {
                     emit NewUserPlace(userAddress, ref, 2, level, 6);
                 }
             }  else if ((len == 1 || len == 2) &&
-                    users[ref].x6Matrix[level].firstLevelReferrals[0] == referrerAddress) {
-                if (users[referrerAddress].x6Matrix[level].firstLevelReferrals.length == 1) {
+                    users[ref].x4Matrix[level].firstLevelReferrals[0] == referrerAddress) {
+                if (users[referrerAddress].x4Matrix[level].firstLevelReferrals.length == 1) {
                     emit NewUserPlace(userAddress, ref, 2, level, 3);
                 } else {
                     emit NewUserPlace(userAddress, ref, 2, level, 4);
                 }
-            } else if (len == 2 && users[ref].x6Matrix[level].firstLevelReferrals[1] == referrerAddress) {
-                if (users[referrerAddress].x6Matrix[level].firstLevelReferrals.length == 1) {
+            } else if (len == 2 && users[ref].x4Matrix[level].firstLevelReferrals[1] == referrerAddress) {
+                if (users[referrerAddress].x4Matrix[level].firstLevelReferrals.length == 1) {
                     emit NewUserPlace(userAddress, ref, 2, level, 5);
                 } else {
                     emit NewUserPlace(userAddress, ref, 2, level, 6);
                 }
             }
 
-            return _updateX6ReferrerSecondLevel(userAddress, ref, level);
+            return _updateX4ReferrerSecondLevel(userAddress, ref, level);
         }
 
-        users[referrerAddress].x6Matrix[level].secondLevelReferrals.push(userAddress);
+        users[referrerAddress].x4Matrix[level].secondLevelReferrals.push(userAddress);
 
-        if (users[referrerAddress].x6Matrix[level].closedPart != address(0)) {
-            if ((users[referrerAddress].x6Matrix[level].firstLevelReferrals[0] ==
-                users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]) &&
-                (users[referrerAddress].x6Matrix[level].firstLevelReferrals[0] ==
-                users[referrerAddress].x6Matrix[level].closedPart)) {
+        if (users[referrerAddress].x4Matrix[level].closedPart != address(0)) {
+            if ((users[referrerAddress].x4Matrix[level].firstLevelReferrals[0] ==
+                users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]) &&
+                (users[referrerAddress].x4Matrix[level].firstLevelReferrals[0] ==
+                users[referrerAddress].x4Matrix[level].closedPart)) {
 
-                _updateX6(userAddress, referrerAddress, level, true);
-                return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
-            } else if (users[referrerAddress].x6Matrix[level].firstLevelReferrals[0] ==
-                users[referrerAddress].x6Matrix[level].closedPart) {
-                _updateX6(userAddress, referrerAddress, level, true);
-                return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+                _updateX4(userAddress, referrerAddress, level, true);
+                return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
+            } else if (users[referrerAddress].x4Matrix[level].firstLevelReferrals[0] ==
+                users[referrerAddress].x4Matrix[level].closedPart) {
+                _updateX4(userAddress, referrerAddress, level, true);
+                return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
             } else {
-                _updateX6(userAddress, referrerAddress, level, false);
-                return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+                _updateX4(userAddress, referrerAddress, level, false);
+                return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
             }
         }
 
-        if (users[referrerAddress].x6Matrix[level].firstLevelReferrals[1] == userAddress) {
-            _updateX6(userAddress, referrerAddress, level, false);
-            return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
-        } else if (users[referrerAddress].x6Matrix[level].firstLevelReferrals[0] == userAddress) {
-            _updateX6(userAddress, referrerAddress, level, true);
-            return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+        if (users[referrerAddress].x4Matrix[level].firstLevelReferrals[1] == userAddress) {
+            _updateX4(userAddress, referrerAddress, level, false);
+            return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
+        } else if (users[referrerAddress].x4Matrix[level].firstLevelReferrals[0] == userAddress) {
+            _updateX4(userAddress, referrerAddress, level, true);
+            return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
         }
 
-        if (users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.length <=
-            users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]].x6Matrix[level].firstLevelReferrals.length) {
-            _updateX6(userAddress, referrerAddress, level, false);
+        if (users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[0]].x4Matrix[level].firstLevelReferrals.length <=
+            users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]].x4Matrix[level].firstLevelReferrals.length) {
+            _updateX4(userAddress, referrerAddress, level, false);
         } else {
-            _updateX6(userAddress, referrerAddress, level, true);
+            _updateX4(userAddress, referrerAddress, level, true);
         }
 
-        _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+        _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
     }
 
-    function _updateX6(address userAddress, address referrerAddress, uint8 level, bool x2) private {
+    function _updateX4(address userAddress, address referrerAddress, uint8 level, bool x2) private {
         if (!x2) {
-            users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.push(userAddress);
+            users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[0]].x4Matrix[level].firstLevelReferrals.push(userAddress);
 
-            emit NewUserPlace(userAddress, users[referrerAddress].x6Matrix[level].firstLevelReferrals[0], 2, level, uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.length));
-            emit NewUserPlace(userAddress, referrerAddress, 2, level, 2 + uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.length));
+            emit NewUserPlace(userAddress, users[referrerAddress].x4Matrix[level].firstLevelReferrals[0], 2, level, uint8(users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[0]].x4Matrix[level].firstLevelReferrals.length));
+            emit NewUserPlace(userAddress, referrerAddress, 2, level, 2 + uint8(users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[0]].x4Matrix[level].firstLevelReferrals.length));
 
             //set current level
-            users[userAddress].x6Matrix[level].currentReferrer = users[referrerAddress].x6Matrix[level].firstLevelReferrals[0];
+            users[userAddress].x4Matrix[level].currentReferrer = users[referrerAddress].x4Matrix[level].firstLevelReferrals[0];
         } else {
-            users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]].x6Matrix[level].firstLevelReferrals.push(userAddress);
+            users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]].x4Matrix[level].firstLevelReferrals.push(userAddress);
 
-            emit NewUserPlace(userAddress, users[referrerAddress].x6Matrix[level].firstLevelReferrals[1], 2, level, uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]].x6Matrix[level].firstLevelReferrals.length));
-            emit NewUserPlace(userAddress, referrerAddress, 2, level, 4 + uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]].x6Matrix[level].firstLevelReferrals.length));
+            emit NewUserPlace(userAddress, users[referrerAddress].x4Matrix[level].firstLevelReferrals[1], 2, level, uint8(users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]].x4Matrix[level].firstLevelReferrals.length));
+            emit NewUserPlace(userAddress, referrerAddress, 2, level, 4 + uint8(users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]].x4Matrix[level].firstLevelReferrals.length));
 
             //set current level
-            users[userAddress].x6Matrix[level].currentReferrer = users[referrerAddress].x6Matrix[level].firstLevelReferrals[1];
+            users[userAddress].x4Matrix[level].currentReferrer = users[referrerAddress].x4Matrix[level].firstLevelReferrals[1];
         }
     }
 
-    function _updateX6ReferrerSecondLevel(address userAddress, address referrerAddress, uint8 level) private {
-        if (users[referrerAddress].x6Matrix[level].secondLevelReferrals.length < 4) {
+    function _updateX4ReferrerSecondLevel(address userAddress, address referrerAddress, uint8 level) private {
+        if (users[referrerAddress].x4Matrix[level].secondLevelReferrals.length < 4) {
             return _sendETHDividends(referrerAddress, userAddress, 2, level);
         }
 
-        address[] memory x6 = users[users[referrerAddress].x6Matrix[level].currentReferrer].x6Matrix[level].firstLevelReferrals;
+        address[] memory x4 = users[users[referrerAddress].x4Matrix[level].currentReferrer].x4Matrix[level].firstLevelReferrals;
 
-        if (x6.length == 2) {
-            if (x6[0] == referrerAddress ||
-                x6[1] == referrerAddress) {
-                users[users[referrerAddress].x6Matrix[level].currentReferrer].x6Matrix[level].closedPart = referrerAddress;
+        if (x4.length == 2) {
+            if (x4[0] == referrerAddress ||
+                x4[1] == referrerAddress) {
+                users[users[referrerAddress].x4Matrix[level].currentReferrer].x4Matrix[level].closedPart = referrerAddress;
             }
-        } else if (x6.length == 1) {
-            if (x6[0] == referrerAddress) {
-                users[users[referrerAddress].x6Matrix[level].currentReferrer].x6Matrix[level].closedPart = referrerAddress;
+        } else if (x4.length == 1) {
+            if (x4[0] == referrerAddress) {
+                users[users[referrerAddress].x4Matrix[level].currentReferrer].x4Matrix[level].closedPart = referrerAddress;
             }
         }
 
-        users[referrerAddress].x6Matrix[level].firstLevelReferrals = new address[](0);
-        users[referrerAddress].x6Matrix[level].secondLevelReferrals = new address[](0);
-        users[referrerAddress].x6Matrix[level].closedPart = address(0);
+        users[referrerAddress].x4Matrix[level].firstLevelReferrals = new address[](0);
+        users[referrerAddress].x4Matrix[level].secondLevelReferrals = new address[](0);
+        users[referrerAddress].x4Matrix[level].closedPart = address(0);
 
-        if (!users[referrerAddress].activeX6Levels[level+1] && level != LAST_LEVEL) {
-            users[referrerAddress].x6Matrix[level].blocked = true;
+        if (!users[referrerAddress].activeX4Levels[level+1] && level != LAST_LEVEL) {
+            users[referrerAddress].x4Matrix[level].blocked = true;
         }
 
-        users[referrerAddress].x6Matrix[level].reinvestCount++;
+        users[referrerAddress].x4Matrix[level].reinvestCount++;
 
         if (referrerAddress != owner) {
-            address freeReferrerAddress = _findFreeX6Referrer(referrerAddress, level);
+            address freeReferrerAddress = _findFreeX4Referrer(referrerAddress, level);
 
             emit Reinvest(referrerAddress, freeReferrerAddress, userAddress, 2, level);
-            _updateX6Referrer(referrerAddress, freeReferrerAddress, level);
+            _updateX4Referrer(referrerAddress, freeReferrerAddress, level);
         } else {
             emit Reinvest(owner, address(0), userAddress, 2, level);
             _sendETHDividends(owner, userAddress, 2, level);
@@ -385,10 +385,10 @@ contract Ponzy {
             }
         } else {
             while (true) {
-                if (users[receiver].x6Matrix[level].blocked) {
+                if (users[receiver].x4Matrix[level].blocked) {
                     emit MissedEthReceive(receiver, _from, 2, level);
                     isExtraDividends = true;
-                    receiver = users[receiver].x6Matrix[level].currentReferrer;
+                    receiver = users[receiver].x4Matrix[level].currentReferrer;
                 } else {
                     return (receiver, isExtraDividends);
                 }
@@ -422,9 +422,9 @@ contract Ponzy {
         }
     }
 
-    function _findFreeX6Referrer(address userAddress, uint8 level) private view returns (address) {
+    function _findFreeX4Referrer(address userAddress, uint8 level) private view returns (address) {
         while (true) {
-            if (users[users[userAddress].referrer].activeX6Levels[level]) {
+            if (users[users[userAddress].referrer].activeX4Levels[level]) {
                 return users[userAddress].referrer;
             }
 
@@ -444,16 +444,16 @@ contract Ponzy {
         return _findFreeX3Referrer(userAddress, level);
     }
 
-    function findFreeX6Referrer(address userAddress, uint8 level) external view returns (address) {
-        return _findFreeX6Referrer(userAddress, level);
+    function findFreeX4Referrer(address userAddress, uint8 level) external view returns (address) {
+        return _findFreeX4Referrer(userAddress, level);
     }
 
     function usersActiveX3Levels(address userAddress, uint8 level) external view returns (bool) {
         return users[userAddress].activeX3Levels[level];
     }
 
-    function usersActiveX6Levels(address userAddress, uint8 level) external view returns (bool) {
-        return users[userAddress].activeX6Levels[level];
+    function usersActiveX4Levels(address userAddress, uint8 level) external view returns (bool) {
+        return users[userAddress].activeX4Levels[level];
     }
 
     function usersX3Matrix(address userAddress, uint8 level) external view returns (
@@ -470,7 +470,7 @@ contract Ponzy {
         );
     }
 
-    function usersX6Matrix(address userAddress, uint8 level) external view returns (
+    function usersX4Matrix(address userAddress, uint8 level) external view returns (
         address currentReferrer,
         address[] memory firstLevelReferrals,
         address[] memory secondLevelReferrals,
@@ -479,11 +479,11 @@ contract Ponzy {
         uint256 reinvestCount
     ) {
         return (
-            users[userAddress].x6Matrix[level].currentReferrer,
-            users[userAddress].x6Matrix[level].firstLevelReferrals,
-            users[userAddress].x6Matrix[level].secondLevelReferrals,
-            users[userAddress].x6Matrix[level].blocked,
-            users[userAddress].x6Matrix[level].closedPart,
+            users[userAddress].x4Matrix[level].currentReferrer,
+            users[userAddress].x4Matrix[level].firstLevelReferrals,
+            users[userAddress].x4Matrix[level].secondLevelReferrals,
+            users[userAddress].x4Matrix[level].blocked,
+            users[userAddress].x4Matrix[level].closedPart,
             users[userAddress].x3Matrix[level].reinvestCount
         );
     }
