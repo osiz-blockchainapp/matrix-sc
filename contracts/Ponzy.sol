@@ -571,7 +571,7 @@ contract PonzyAuto {
 
     function destruct() external {
         require(msg.sender == owner, "Access denied");
-        selfdestruct(owner);
+        selfdestruct(msg.sender);
     }
 
     // -----------------------------------------
