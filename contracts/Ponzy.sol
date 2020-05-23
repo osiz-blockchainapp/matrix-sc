@@ -497,8 +497,9 @@ contract PonzyAuto {
     struct User {
         uint256 id;
 
-        X3_AUTO x3Auto;
-        X4_AUTO x4Auto;
+        // Only the element will be used
+        mapping(uint8 => X3_AUTO) x3Auto;
+        mapping(uint8 => X4_AUTO) x4Auto;
     }
 
     struct X3_AUTO {
@@ -521,7 +522,7 @@ contract PonzyAuto {
     address payable public owner;
     uint256 public lastUserId = 2;
 
-    mapping(address => User) private users;
+    mapping(address => User) public users;
     mapping(uint256 => address) public idToAddress;
     mapping(uint8 => uint256) public levelPrice;
 
@@ -598,30 +599,30 @@ contract PonzyAuto {
 
     function _newUser(address user, address x3AutoUpline, address x4AutoUpline) private {
         // Register x3Auto values
-        users[user].x3Auto.upline = x3AutoUpline;
-        users[user].x3Auto.upline_id = users[x3AutoUpline].id;
+        users[user].x3Auto[0].upline = x3AutoUpline;
+        users[user].x3Auto[0].upline_id = users[x3AutoUpline].id;
 
         // Add member to x3Auto upline referrals
-        users[x3AutoUpline].x3Auto.referrals.push(user);
+        users[x3AutoUpline].x3Auto[0].referrals.push(user);
 
         // Register x4Auto values
-        users[user].x4Auto.upline = x4AutoUpline;
-        users[user].x4Auto.upline_id = users[x4AutoUpline].id;
+        users[user].x4Auto[0].upline = x4AutoUpline;
+        users[user].x4Auto[0].upline_id = users[x4AutoUpline].id;
 
         // Add member to x4Auto upline first referrals and second line referalls
-        users[x4AutoUpline].x4Auto.firstLevelReferrals.push(user);
-        users[users[x4AutoUpline].x4Auto.upline].x4Auto.secondLevelReferrals.push(user);
+        users[x4AutoUpline].x4Auto[0].firstLevelReferrals.push(user);
+        users[users[x4AutoUpline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.push(user);
 
         idToAddress[lastUserId] = user;
         users[user].id = ++lastUserId;
     }
 
     function _x3AutoUpLevel(address user, uint8 level) private {
-        users[user].x3Auto.level = level;
+        users[user].x3Auto[0].level = level;
     }
 
     function _x4AutoUpLevel(address user, uint8 level) private {
-        users[user].x4Auto.level = level;
+        users[user].x4Auto[0].level = level;
     }
 
     function _x3AutouplinePay(uint256 value, address upline) private {
@@ -631,23 +632,23 @@ contract PonzyAuto {
         }
 
         // Re-Invest check
-        if (users[upline].x3Auto.referrals[2] == msg.sender && users[upline].x3Auto.referrals.length == 3) {
+        if (users[upline].x3Auto[0].referrals[2] == msg.sender && users[upline].x3Auto[0].referrals.length == 3) {
             // Transfer funds to upline of msg.senders' upline
-            address reinvestReceiver = users[upline].x3Auto.upline == address(0) ? owner : users[upline].x3Auto.upline;
+            address reinvestReceiver = users[upline].x3Auto[0].upline == address(0) ? owner : users[upline].x3Auto[0].upline;
             _send(reinvestReceiver, value);
         } else {
             // Increase upgrade profit of users' upline
-            users[upline].x3Auto.profit += value;
+            users[upline].x3Auto[0].profit += value;
 
             // The limit, which needed to my upline for achieving a new level
-            uint256 levelMaxCap = levelPrice[users[upline].x3Auto.level + 1];
+            uint256 levelMaxCap = levelPrice[users[upline].x3Auto[0].level + 1];
 
             // If upline level limit reached
-            if (users[upline].x3Auto.profit >= levelMaxCap) {
-                users[upline].x3Auto.profit = 0;
+            if (users[upline].x3Auto[0].profit >= levelMaxCap) {
+                users[upline].x3Auto[0].profit = 0;
 
-                _x3AutoUpLevel(upline, users[upline].x3Auto.level + 1);
-                _x3AutouplinePay(levelMaxCap, users[upline].x3Auto.upline);
+                _x3AutoUpLevel(upline, users[upline].x3Auto[0].level + 1);
+                _x3AutouplinePay(levelMaxCap, users[upline].x3Auto[0].upline);
             }
         }
     }
@@ -660,22 +661,22 @@ contract PonzyAuto {
 
         address reinvestReceiver = _getX4_AUTOReinvestReceiver(users[upline].id);
         
-        bool isReinvest = users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals.length == 3 && users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals[2] == msg.sender;
-        bool isEarning = users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals.length == 4 && users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals[3] == msg.sender;
-        bool isUpgrade = users[users[upline].x4Auto.upline].x4Auto.secondLevelReferrals.length < 3 && users[users[upline].x4Auto.upline].x4Auto.firstLevelReferrals.length == 2;
+        bool isReinvest = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length == 3 && users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals[2] == msg.sender;
+        bool isEarning = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length == 4 && users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals[3] == msg.sender;
+        bool isUpgrade = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length < 3 && users[users[upline].x4Auto[0].upline].x4Auto[0].firstLevelReferrals.length == 2;
         
         if (isReinvest) {
             _send(reinvestReceiver, value);
         } else if (isEarning) {
-            _send(users[upline].x4Auto.upline, value);
+            _send(users[upline].x4Auto[0].upline, value);
         } else if (isUpgrade) {
-            uint256 levelMaxCap = levelPrice[users[reinvestReceiver].x4Auto.level + 1];
+            uint256 levelMaxCap = levelPrice[users[reinvestReceiver].x4Auto[0].level + 1];
 
             // If upline level limit reached
-            if (users[reinvestReceiver].x4Auto.profit >= levelMaxCap) {
-                users[reinvestReceiver].x4Auto.profit = 0;
+            if (users[reinvestReceiver].x4Auto[0].profit >= levelMaxCap) {
+                users[reinvestReceiver].x4Auto[0].profit = 0;
 
-                _x4AutoUpLevel(upline, users[upline].x3Auto.level + 1);
+                _x4AutoUpLevel(upline, users[upline].x3Auto[0].level + 1);
                 _x4AutouplinePay(levelMaxCap, reinvestReceiver);
             }        
         }
@@ -737,11 +738,11 @@ contract PonzyAuto {
     ) {
         return (
             users[user].id,
-            users[user].x3Auto.level,
-            users[user].x3Auto.upline_id,
-            users[user].x3Auto.upline,
-            users[user].x3Auto.profit,
-            users[user].x3Auto.referrals
+            users[user].x3Auto[0].level,
+            users[user].x3Auto[0].upline_id,
+            users[user].x3Auto[0].upline,
+            users[user].x3Auto[0].profit,
+            users[user].x3Auto[0].referrals
         );
     }
     
@@ -756,12 +757,12 @@ contract PonzyAuto {
     ) {
         return (
             users[user].id,
-            users[user].x4Auto.level,
-            users[user].x4Auto.upline_id,
-            users[user].x4Auto.upline,
-            users[user].x4Auto.profit,
-            users[user].x4Auto.firstLevelReferrals,
-            users[user].x4Auto.secondLevelReferrals
+            users[user].x4Auto[0].level,
+            users[user].x4Auto[0].upline_id,
+            users[user].x4Auto[0].upline,
+            users[user].x4Auto[0].profit,
+            users[user].x4Auto[0].firstLevelReferrals,
+            users[user].x4Auto[0].secondLevelReferrals
         );
     }
 }
