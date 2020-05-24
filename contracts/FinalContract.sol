@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-contract Ponzy {
+contract X3_X4 {
 
     address public owner;
     uint256 public lastUserId = 2;
@@ -16,6 +16,10 @@ contract Ponzy {
 
         mapping(uint8 => X3) x3Matrix;
         mapping(uint8 => X4) x4Matrix;
+
+        // Only the element will be used
+        mapping(uint8 => X3_AUTO) x3Auto;
+        mapping(uint8 => X4_AUTO) x4Auto;
     }
 
     struct X3 {
@@ -33,6 +37,23 @@ contract Ponzy {
         uint256 reinvestCount;
 
         address closedPart;
+    }
+
+    struct X3_AUTO {
+        uint8 level;
+        uint256 upline_id;
+        address upline;
+        uint256 profit;
+        address[] referrals;
+    }
+
+    struct X4_AUTO {
+        uint8 level;
+        uint256 upline_id;
+        address upline;
+        uint256 profit;
+        address[] firstLevelReferrals;
+        address[] secondLevelReferrals;
     }
 
     mapping(address => User) public users;
@@ -493,38 +514,7 @@ contract Ponzy {
     }
 }
 
-contract PonzyAuto {
-    struct User {
-        uint256 id;
-
-        // Only the element will be used
-        mapping(uint8 => X3_AUTO) x3Auto;
-        mapping(uint8 => X4_AUTO) x4Auto;
-    }
-
-    struct X3_AUTO {
-        uint8 level;
-        uint256 upline_id;
-        address upline;
-        uint256 profit;
-        address[] referrals;
-    }
-
-    struct X4_AUTO {
-        uint8 level;
-        uint256 upline_id;
-        address upline;
-        uint256 profit;
-        address[] firstLevelReferrals;
-        address[] secondLevelReferrals;
-    }
-
-    address payable public owner;
-    uint256 public lastUserId = 2;
-
-    mapping(address => User) public users;
-    mapping(uint256 => address) public idToAddress;
-    mapping(uint8 => uint256) public levelPrice;
+contract X3_X4_Auto is X3_X4 {
 
     // -----------------------------------------
     // CONSTRUCTOR
@@ -628,7 +618,7 @@ contract PonzyAuto {
     function _x3AutouplinePay(uint256 value, address upline) private {
         // If upline not defined
         if (upline == address(0)) {
-            return owner.transfer(value);
+            return _send(owner, value);
         }
 
         // Re-Invest check
@@ -656,10 +646,10 @@ contract PonzyAuto {
     function _x4AutouplinePay(uint256 value, address upline) private {
         // If upline not defined
         if (upline == address(0)) {
-            return owner.transfer(value);
+            return _send(owner, value);
         }
 
-        address reinvestReceiver = _getX4_AUTOReinvestReceiver(users[upline].id);
+        address reinvestReceiver = _getX4ReinvestReceiver(users[upline].id);
         
         bool isReinvest = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length == 3 && users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals[2] == msg.sender;
         bool isEarning = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length == 4 && users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals[3] == msg.sender;
@@ -704,7 +694,7 @@ contract PonzyAuto {
         );
     }
 
-    function _getX4_AUTOReinvestReceiver(uint256 id) private view returns (address) {
+    function _getX4ReinvestReceiver(uint256 id) private view returns (address) {
         if (id > 31) {
             uint256 reinvestReceiverId = id;
 
