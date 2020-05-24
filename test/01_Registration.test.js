@@ -1,5 +1,6 @@
 const Ponzy = artifacts.require('Ponzy.sol')
 const { expectRevert } = require('openzeppelin-test-helpers')
+const { REGISTRATION_FEE, ZERO_ADDRESS } = require('../constants')
 
 contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...accounts ]) => {
     let contractInstance
@@ -12,7 +13,7 @@ contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...acco
         it('Deploys successfully', async () => {
             const address = contractInstance.address
             assert.notEqual(address, '')
-            assert.notEqual(address, 0x0)
+            assert.notEqual(address, ZERO_ADDRESS)
             assert.notEqual(address, null)
             assert.notEqual(address, undefined)
         })
@@ -26,8 +27,8 @@ contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...acco
             const isUserActiveX3Level = await contractInstance.usersActiveX3Levels(owner, 1)
             assert.equal(isUserActiveX3Level, true)
 
-            const isUserActiveX6Level = await contractInstance.usersActiveX6Levels(owner, 1)
-            assert.equal(isUserActiveX6Level, true)
+            const isUserActiveX4Level = await contractInstance.usersActiveX4Levels(owner, 1)
+            assert.equal(isUserActiveX4Level, true)
         })
     })
 
@@ -35,19 +36,19 @@ contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...acco
         it('With invalid price. Expect to throw', async () => {
             await expectRevert(
                 contractInstance.registration(owner, { from: alice }),
-                'registration cost 0.05 ETH'
+                '_registrationValidation: registration fee is not correct'
             )
         })
 
         it('With invalid referrer. Expect to throw', async () => {
             await expectRevert(
-                contractInstance.registration(bob, { from: alice, value: 50000000000000000 }),
-                'referrer not exists'
+                contractInstance.registration(bob, { from: alice, value: REGISTRATION_FEE }),
+                '_registrationValidation: referrer not exists'
             )
         })
 
         it('New user registered successfully', async () => {
-            await contractInstance.registration(owner, { from: alice, value: 50000000000000000 })
+            await contractInstance.registration(owner, { from: alice, value: REGISTRATION_FEE })
 
             const userExists = await contractInstance.isUserExists(alice)
             assert.equal(userExists, true)
@@ -55,27 +56,27 @@ contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...acco
             const isUserActiveX3Level = await contractInstance.usersActiveX3Levels(alice, 1)
             assert.equal(isUserActiveX3Level, true)
 
-            const isUserActiveX6Level = await contractInstance.usersActiveX6Levels(alice, 1)
-            assert.equal(isUserActiveX6Level, true)
+            const isUserActiveX4Level = await contractInstance.usersActiveX4Levels(alice, 1)
+            assert.equal(isUserActiveX4Level, true)
 
             const addressReferred3x = await contractInstance.findFreeX3Referrer(alice, 1)
             assert.equal(addressReferred3x, owner)
 
-            const addressReferred6x = await contractInstance.findFreeX6Referrer(alice, 1)
+            const addressReferred6x = await contractInstance.findFreeX4Referrer(alice, 1)
             assert.equal(addressReferred6x, owner)
         })
 
         it('With user registered. Expect to throw', async () => {
             await expectRevert(
-                contractInstance.registration(owner, { from: alice, value: 50000000000000000  }),
-                'user exists'
+                contractInstance.registration(owner, { from: alice, value: REGISTRATION_FEE  }),
+                '_registrationValidation: user exists'
             )
         })
     })
 
     describe('Register New User referred by user', async () => {
         it('New user registered successfully', async () => {
-            await contractInstance.registration(alice, { from: bob, value: 50000000000000000 })
+            await contractInstance.registration(alice, { from: bob, value: REGISTRATION_FEE })
 
             const userExists = await contractInstance.isUserExists(bob)
             assert.equal(userExists, true)
@@ -83,23 +84,22 @@ contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...acco
             const isUserActiveX3Level = await contractInstance.usersActiveX3Levels(bob, 1)
             assert.equal(isUserActiveX3Level, true)
 
-            const isUserActiveX6Level = await contractInstance.usersActiveX6Levels(bob, 1)
-            assert.equal(isUserActiveX6Level, true)
+            const isUserActiveX4Level = await contractInstance.usersActiveX4Levels(bob, 1)
+            assert.equal(isUserActiveX4Level, true)
 
             const addressReferred3x = await contractInstance.findFreeX3Referrer(bob, 1)
             assert.equal(addressReferred3x, alice)
 
-            const addressReferred6x = await contractInstance.findFreeX6Referrer(bob, 1)
+            const addressReferred6x = await contractInstance.findFreeX4Referrer(bob, 1)
             assert.equal(addressReferred6x, alice)
         })
     })
 
     describe('Register New User by fallback function', async () => {
         it('New user registered successfully', async () => {
-            const amount = web3.utils.toWei('0.05', 'ether')
             const address = contractInstance.address
 
-            await contractInstance.sendTransaction({ from: max, gasLimit: 6721975, to: address, value: amount })
+            await contractInstance.sendTransaction({ from: max, gasLimit: 6721975, to: address, value: REGISTRATION_FEE })
 
             const userExists = await contractInstance.isUserExists(max)
             assert.equal(userExists, true)
@@ -107,23 +107,22 @@ contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...acco
             const isUserActiveX3Level = await contractInstance.usersActiveX3Levels(max, 1)
             assert.equal(isUserActiveX3Level, true)
 
-            const isUserActiveX6Level = await contractInstance.usersActiveX6Levels(max, 1)
-            assert.equal(isUserActiveX6Level, true)
+            const isUserActiveX4Level = await contractInstance.usersActiveX4Levels(max, 1)
+            assert.equal(isUserActiveX4Level, true)
 
             const addressReferred3x = await contractInstance.findFreeX3Referrer(max, 1)
             assert.equal(addressReferred3x, owner)
 
-            const addressReferred6x = await contractInstance.findFreeX6Referrer(max, 1)
+            const addressReferred6x = await contractInstance.findFreeX4Referrer(max, 1)
             assert.equal(addressReferred6x, owner)
         })
     })
 
     describe('Register New User referred by user by fallback function', async () => {
         it('New user registered successfully', async () => {
-            const amount = web3.utils.toWei('0.05', 'ether')
             const address = contractInstance.address
 
-            await contractInstance.sendTransaction({ from: john, data: alice, gasLimit: 6721975, to: address, value: amount })
+            await contractInstance.sendTransaction({ from: john, data: alice, gasLimit: 6721975, to: address, value: REGISTRATION_FEE })
 
             const userExists = await contractInstance.isUserExists(john)
             assert.equal(userExists, true)
@@ -131,13 +130,13 @@ contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...acco
             const isUserActiveX3Level= await contractInstance.usersActiveX3Levels(john, 1)
             assert.equal(isUserActiveX3Level, true)
 
-            const isUserActiveX6Level= await contractInstance.usersActiveX6Levels(john, 1)
-            assert.equal(isUserActiveX6Level, true)
+            const isUserActiveX4Level= await contractInstance.usersActiveX4Levels(john, 1)
+            assert.equal(isUserActiveX4Level, true)
 
             const addressReferred3x = await contractInstance.findFreeX3Referrer(john, 1)
             assert.equal(addressReferred3x, alice)
 
-            const addressReferred6x = await contractInstance.findFreeX6Referrer(john, 1)
+            const addressReferred6x = await contractInstance.findFreeX4Referrer(john, 1)
             assert.equal(addressReferred6x, alice)
         })
     })
