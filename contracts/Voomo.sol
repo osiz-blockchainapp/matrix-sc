@@ -1,9 +1,10 @@
 pragma solidity ^0.5.0;
 
-contract Ponzy {
+contract Voomo {
 
     address public owner;
     uint256 public lastUserId = 2;
+    uint256 public autoSystemLastUserId = 1;
     uint8 public constant LAST_LEVEL = 12;
     uint256 public constant registrationFee = 0.1 ether;
 
@@ -43,6 +44,8 @@ contract Ponzy {
 
     struct User {
         uint256 id;
+        uint256 autoSystemId;
+
         address referrer;
         uint256 partnersCount;
 
@@ -59,9 +62,11 @@ contract Ponzy {
 
     mapping(address => User) public users;
     mapping(uint256 => address) public idToAddress;
+    mapping(uint256 => address) public autoIdToAddress;
     mapping(uint256 => address) public userIds;
     mapping(address => uint256) public balances;
     mapping(uint8 => uint256) public levelPrice;
+    mapping(uint8 => uint256) public autoUpgradeLevels;
 
     event Registration(address indexed user, address indexed referrer, uint256 indexed userId, uint256 referrerId);
     event Reinvest(address indexed user, address indexed currentReferrer, address indexed caller, uint8 matrix, uint8 level);
@@ -76,25 +81,20 @@ contract Ponzy {
 
     constructor (address ownerAddress) public {
         require(ownerAddress != address(0), "constructor: owner address can not be 0x0 address");
-
         owner = ownerAddress;
 
-        // SETUP LEVELS AND VALUES
         levelPrice[1] = 0.025 ether;
-        levelPrice[2] = 0.05 ether;
-        levelPrice[3] = 0.1 ether;
-        levelPrice[4] = 0.2 ether;
-        levelPrice[5] = 0.4 ether;
-        levelPrice[6] = 0.8 ether;
-        levelPrice[7] = 1.6 ether;
-        levelPrice[8] = 3.2 ether;
-        levelPrice[9] = 6.4 ether;
-        levelPrice[10] = 12.8 ether;
-        levelPrice[11] = 25.6 ether;
-        levelPrice[12] = 51.2 ether;
+        autoUpgradeLevels[1] = 0.025 ether;
+
+        for (uint8 i = 2; i <= LAST_LEVEL; i++) {
+            levelPrice[i] = levelPrice[i-1] * 2;
+            if (i == 2) autoUpgradeLevels[i] = 0.05 ether;
+            else autoUpgradeLevels[i] = autoUpgradeLevels[i-1] * 3;
+        }
 
         User memory user = User({
             id: 1,
+            autoSystemId: 0,
             referrer: address(0),
             partnersCount: uint256(0)
         });
@@ -109,10 +109,6 @@ contract Ponzy {
             users[ownerAddress].activeX3Levels[i] = true;
             users[ownerAddress].activeX4Levels[i] = true;
         }
-
-        // Init level for X3 Auto and X4 Auto Matrix
-        users[ownerAddress].x3Auto[0].level = 1;
-        users[ownerAddress].x4Auto[0].level = 1;
     }
 
     // -----------------------------------------
@@ -153,6 +149,35 @@ contract Ponzy {
     // PRIVATE
     // -----------------------------------------
 
+    function _registration(address userAddress, address referrerAddress) private {
+        _registrationValidation(userAddress, referrerAddress);
+
+        User memory user = User({
+            id: lastUserId,
+            autoSystemId: 0,
+            referrer: referrerAddress,
+            partnersCount: 0
+        });
+
+        users[userAddress] = user;
+        userIds[lastUserId] = userAddress;
+        idToAddress[lastUserId] = userAddress;
+        users[userAddress].referrer = referrerAddress;
+
+        users[referrerAddress].partnersCount++;
+
+        _newX3X4Member(userAddress);
+        lastUserId++;
+
+        if (users[referrerAddress].partnersCount == 1) {
+            // Register AUTO systems for referrer user
+            _newX3X4AutoMember(referrerAddress);
+            autoSystemLastUserId++;
+        }
+
+        emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
+    }
+
     function _registrationValidation(address userAddress, address referrerAddress) private {
         require(msg.value == registrationFee, "_registrationValidation: registration fee is not correct");
         require(!_isUserExists(userAddress), "_registrationValidation: user exists");
@@ -170,6 +195,10 @@ contract Ponzy {
         return (users[user].id != 0);
     }
 
+    function _isUserAutoSystemActve(address user) private view returns (bool) {
+        return (users[user].autoSystemId != 0);
+    }
+
     function _send(address to, uint256 value) private {
         require(to != address(0), "_send: zero address");
         address(uint160(to)).transfer(value);
@@ -184,30 +213,6 @@ contract Ponzy {
     // -----------------------------------------
     // PRIVATE (X3 X4)
     // -----------------------------------------
-
-    function _registration(address userAddress, address referrerAddress) private {
-        _registrationValidation(userAddress, referrerAddress);
-
-        User memory user = User({
-            id: lastUserId,
-            referrer: referrerAddress,
-            partnersCount: 0
-        });
-
-        users[userAddress] = user;
-        userIds[lastUserId] = userAddress;
-        idToAddress[lastUserId] = userAddress;
-        users[userAddress].referrer = referrerAddress;
-
-        users[referrerAddress].partnersCount++;
-
-        _newX3X4Member(userAddress);
-        _newX3X4AutoMember(userAddress);
-
-        lastUserId++;
-
-        emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
-    }
 
     function _newX3X4Member(address userAddress) private {
         users[userAddress].activeX3Levels[1] = true;
@@ -492,39 +497,53 @@ contract Ponzy {
     // -----------------------------------------
 
     function _newX3X4AutoMember(address userAddress) private {
+        autoIdToAddress[autoSystemLastUserId] = userAddress;
+
         // Get upline ID of user
-        (address x3AutoUpline, address x4AutoUpline) = _detectUplinesAddresses(lastUserId);
+        (address x3AutoUpline, address x4AutoUpline) = _detectUplinesAddresses(autoSystemLastUserId);
+
+        users[userAddress].autoSystemId = autoSystemLastUserId;
 
         // Register x3Auto values
         users[userAddress].x3Auto[0].upline = x3AutoUpline;
-        users[userAddress].x3Auto[0].upline_id = users[x3AutoUpline].id;
-
-        // Add member to x3Auto upline referrals
-        users[x3AutoUpline].x3Auto[0].referrals.push(userAddress);
+        users[userAddress].x3Auto[0].upline_id = users[x3AutoUpline].autoSystemId;
 
         // Register x4Auto values
         users[userAddress].x4Auto[0].upline = x4AutoUpline;
-        users[userAddress].x4Auto[0].upline_id = users[x4AutoUpline].id;
+        users[userAddress].x4Auto[0].upline_id = users[x4AutoUpline].autoSystemId;
 
-        // Add member to x4Auto upline first referrals and second line referalls
-        users[x4AutoUpline].x4Auto[0].firstLevelReferrals.push(userAddress);
-        users[users[x4AutoUpline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.push(userAddress);
+        if (userAddress != owner) {
+            // Add member to x3Auto upline referrals
+            users[x3AutoUpline].x3Auto[0].referrals.push(userAddress);
+
+            // Add member to x4Auto upline first referrals and second line referalls
+            users[x4AutoUpline].x4Auto[0].firstLevelReferrals.push(userAddress);
+            users[users[x4AutoUpline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.push(userAddress);
+        }
 
         // Increase level of user
         _x3AutoUpLevel(userAddress, 1);
         _x4AutoUpLevel(userAddress, 1);
 
+        // x3AutoUpline = x3AutoUpline == address(0) ? x3AutoUpline : owner;
+        if (x4AutoUpline == owner) {
+            x4AutoUpline = address(0);
+        }
+
         // // Check the state and pay to uplines
-        _x3AutoUplinePay(0.025 ether, x3AutoUpline);
-        _x4AutoUplinePay(0.025 ether, x4AutoUpline);
+        _x3AutoUplinePay(0.025 ether, x3AutoUpline, userAddress);
+        _x4AutoUplinePay(0.025 ether, x4AutoUpline, userAddress);
     }
 
     function _detectUplinesAddresses(uint256 id) private view returns(address, address) {
         address x3AutoUplineAddress = owner;
         address x4AutoUplineAddress = owner;
 
+        // When 1st member registered
+        if (id == 1) return (address(0), address(0));
+
         // If owner address required
-        if (id == 1) return (x3AutoUplineAddress, x4AutoUplineAddress);
+        if (id < 3) return (x3AutoUplineAddress, x4AutoUplineAddress);
 
         // Get X3_AUTO upline
         if (id % 3 == 0)        x3AutoUplineAddress = idToAddress[id / 3];
@@ -533,7 +552,7 @@ contract Ponzy {
 
         // Get X4_AUTO upline
         if (id % 2 == 0)        x4AutoUplineAddress = idToAddress[id / 2];
-        else x4AutoUplineAddress =  x4AutoUplineAddress = idToAddress[(id - 1) / 2];
+        else                    x4AutoUplineAddress = idToAddress[(id - 1) / 2];
 
         return (
             x3AutoUplineAddress,
@@ -549,7 +568,7 @@ contract Ponzy {
         users[user].x4Auto[0].level = level;
     }
 
-    function _getX4ReinvestReceiver(uint256 id) private view returns (address) {
+    function _getX4AutoReinvestReceiver(uint256 id) private view returns (address) {
         if (id > 31) {
             uint256 reinvestReceiverId = id;
 
@@ -564,13 +583,13 @@ contract Ponzy {
         }
     }
 
-    function _x3AutoUplinePay(uint256 value, address upline) private {
+    function _x3AutoUplinePay(uint256 value, address upline, address registeredUser) private {
         // If upline not defined
         if (upline == address(0)) {
             return _send(owner, value);
         }
 
-        bool isReinvest = users[upline].x3Auto[0].referrals.length == 3 && users[upline].x3Auto[0].referrals[2] == msg.sender;
+        bool isReinvest = users[upline].x3Auto[0].referrals.length == 3 && users[upline].x3Auto[0].referrals[2] == registeredUser;
 
         // Re-Invest check
         if (isReinvest) {
@@ -582,43 +601,48 @@ contract Ponzy {
             users[upline].x3Auto[0].profit += value;
 
             // The limit, which needed to my upline for achieving a new level
-            uint256 levelMaxCap = levelPrice[users[upline].x3Auto[0].level + 1];
+            uint256 levelMaxCap = autoUpgradeLevels[users[upline].x3Auto[0].level + 1];
 
             // If upline level limit reached
             if (users[upline].x3Auto[0].profit >= levelMaxCap) {
                 users[upline].x3Auto[0].profit = 0;
 
                 _x3AutoUpLevel(upline, users[upline].x3Auto[0].level + 1);
-                _x3AutoUplinePay(levelMaxCap, users[upline].x3Auto[0].upline);
+                _x3AutoUplinePay(levelMaxCap, users[upline].x3Auto[0].upline, registeredUser);
             }
         }
     }
 
-    function _x4AutoUplinePay(uint256 value, address upline) private {
+    function _x4AutoUplinePay(uint256 value, address upline, address registeredUser) private {
         // If upline not defined
         if (upline == address(0)) {
             return _send(owner, value);
         }
 
-        address reinvestReceiver = _getX4ReinvestReceiver(users[upline].id);
+        bool isReinvest = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length == 3 && users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals[2] == registeredUser;
+        bool isEarning = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length == 4 && users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals[3] == registeredUser;
+        bool isUpgrade = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length < 3;
 
-        bool isReinvest = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length == 3 && users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals[2] == msg.sender;
-        bool isEarning = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length == 4 && users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals[3] == msg.sender;
-        bool isUpgrade = users[users[upline].x4Auto[0].upline].x4Auto[0].secondLevelReferrals.length < 3 && users[users[upline].x4Auto[0].upline].x4Auto[0].firstLevelReferrals.length == 2;
+        address uplineOfUpline = users[upline].x4Auto[0].upline;
 
         if (isReinvest) {
+            address reinvestReceiver = _getX4AutoReinvestReceiver(users[upline].autoSystemId);
             _send(reinvestReceiver, value);
         } else if (isEarning) {
-            _send(users[upline].x4Auto[0].upline, value);
+            _send(uplineOfUpline, value);
         } else if (isUpgrade) {
-            uint256 levelMaxCap = levelPrice[users[reinvestReceiver].x4Auto[0].level + 1];
+            // Increase upgrade profit of upline
+            users[uplineOfUpline].x4Auto[0].profit += value;
+
+            // The limit, which needed to my upline for achieving a new level
+            uint256 levelMaxCap = autoUpgradeLevels[users[uplineOfUpline].x4Auto[0].level + 1];
 
             // If upline level limit reached
-            if (users[reinvestReceiver].x4Auto[0].profit >= levelMaxCap) {
-                users[reinvestReceiver].x4Auto[0].profit = 0;
+            if (users[uplineOfUpline].x4Auto[0].profit >= levelMaxCap) {
+                users[uplineOfUpline].x4Auto[0].profit = 0;
 
-                _x4AutoUpLevel(upline, users[upline].x3Auto[0].level + 1);
-                _x4AutoUplinePay(levelMaxCap, reinvestReceiver);
+                _x4AutoUpLevel(uplineOfUpline, users[uplineOfUpline].x4Auto[0].level + 1);
+                _x4AutoUplinePay(levelMaxCap, uplineOfUpline, registeredUser);
             }
         }
     }
@@ -633,6 +657,20 @@ contract Ponzy {
 
     function findFreeX4Referrer(address userAddress, uint8 level) external view returns (address) {
         return _findFreeX4Referrer(userAddress, level);
+    }
+
+    function findAutoUplines() external view returns(address, address, uint256, uint256) {
+        (address x3UplineAddr, address x4UplineAddr) = _detectUplinesAddresses(autoSystemLastUserId);
+        return (
+            x3UplineAddr,
+            x4UplineAddr,
+            users[x3UplineAddr].autoSystemId,
+            users[x4UplineAddr].autoSystemId
+        );
+    }
+
+    function findX4AutoReinvestReceiver(uint256 userId) external view returns (address) {
+        return _getX4AutoReinvestReceiver(userId);
     }
 
     function usersActiveX3Levels(address userAddress, uint8 level) external view returns (bool) {
@@ -684,7 +722,7 @@ contract Ponzy {
         address[] memory referrals
     ) {
         return (
-            users[user].id,
+            users[user].autoSystemId,
             users[user].x3Auto[0].level,
             users[user].x3Auto[0].upline_id,
             users[user].x3Auto[0].upline,
@@ -703,7 +741,7 @@ contract Ponzy {
         address[] memory secondLevelReferrals
     ) {
         return (
-            users[user].id,
+            users[user].autoSystemId,
             users[user].x4Auto[0].level,
             users[user].x4Auto[0].upline_id,
             users[user].x4Auto[0].upline,
@@ -715,5 +753,9 @@ contract Ponzy {
 
     function isUserExists(address user) external view returns (bool) {
         return _isUserExists(user);
+    }
+
+    function isUserAutoSystemActve(address user) external view returns (bool) {
+        return _isUserAutoSystemActve(user);
     }
 }

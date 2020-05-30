@@ -1,5 +1,5 @@
-const Ponzy = artifacts.require('Ponzy.sol')
+const Voomo = artifacts.require('Voomo.sol')
 
 module.exports = async (deployer, network, accounts) => {
-    await deployer.deploy(Ponzy, accounts[0])
+    return deployer.deploy(Voomo, accounts[0])
 }

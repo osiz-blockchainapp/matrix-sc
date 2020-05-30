@@ -1,12 +1,12 @@
-const Ponzy = artifacts.require('Ponzy.sol')
+const Voomo = artifacts.require('Voomo.sol')
 const { expectRevert } = require('openzeppelin-test-helpers')
 const { REGISTRATION_FEE, ZERO_ADDRESS } = require('../constants')
 
-contract('Ponzy - Registration checks', ([ owner, alice, bob, max, john, ...accounts ]) => {
+contract('Voomo - Registration checks', ([ owner, alice, bob, max, john, ...accounts ]) => {
     let contractInstance
 
     before(async () => {
-        contractInstance = await Ponzy.deployed()
+        contractInstance = await Voomo.deployed()
     })
 
     describe('Deployment', async () => {
