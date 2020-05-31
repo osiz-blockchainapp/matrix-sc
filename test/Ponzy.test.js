@@ -113,17 +113,16 @@ contract('Voomo smart contract tests', (accounts) => {
         const isEarning = x4UplineUplineData['secondLevelReferrals'].length == 3 && x4UplineData['firstLevelReferrals'].length == 1
 
         if (isReinvest) {
-            // Check balance
-            console.log(`X4: #${x4ReinvestReceiverData.id == 0 ? '1' : x4ReinvestReceiverData.id} reinvest received`)
+            console.log(`X4: #${x4ReinvestReceiverData['id'] == 0 ? '1' : x4ReinvestReceiverData.id} reinvest received`)
         } else if (isEarning) {
-            console.log(`X4: #${x4UplineUplineData.id} earning (+ 0.025)`)
+            console.log(`X4: #${x4UplineUplineData['id']} earning (+ 0.025)`)
         } else {
             if (isFirstUpgrade) {
-                // assert.deepEqual(x4UplineUplineData['profit'], ether('0.025'))
-                console.log(`X4: #${x4UplineUplineData.id} upgrade (+ 0.025)`)
+                assert.deepEqual(x4UplineUplineData['profit'], ether('0.025'))
+                console.log(`X4: #${x4UplineUplineData['id']} upgrade (+ 0.025)`)
             } else if (isSecondUpgrade) {
-                // assert.deepEqual(x3UplineAuto['profit'], ether('0'))
-                console.log(`X4: #${x4UplineUplineData.id} new level ${x4UplineUplineData['level']} achieved`)
+                assert.deepEqual(x4UplineUplineData['profit'], ether('0'))
+                console.log(`X4: #${x4UplineUplineData['id']} new level ${x4UplineUplineData['level']} achieved`)
 
                 const ownerAddr = await contractInstance.owner.call()
                 const ownerData = await contractInstance.getUserX4_AUTO(ownerAddr)
@@ -300,7 +299,8 @@ contract('Voomo smart contract tests', (accounts) => {
     })
 
     describe('Loop of registrations', async () => {
-        it('Registers first 50 users', async () => {
+        it('Registers first 50 users', async function () {
+            this.timeout(800000);
             for (let i = 5; i < accounts.length; i ++) {
                 // Pre-payment values from contract
                 const newUserId = (await contractInstance.autoSystemLastUserId.call()).toString()
@@ -313,12 +313,13 @@ contract('Voomo smart contract tests', (accounts) => {
 
                 // Register user
                 await contractInstance.registration(newAutoUser.addr, { from: accounts[i], value: REGISTRATION_FEE })
+                console.log('#', newAutoUser.id, 'joined')
 
                 // Validate user state after registration
                 await userRegistrationChecks(newAutoUser.id, x3Upline, x4Upline, accounts[i - 1])
 
                 // Validate X3 Upline
-                // await x3UplineChecks(x3Upline, newAutoUser)
+                await x3UplineChecks(x3Upline, newAutoUser)
 
                 // Validate X4 Upline
                 await x4UplineChecks(x4Upline, newAutoUser)
