@@ -18,14 +18,14 @@ contract('Voomo - Level 4 overflow tests', ([owner, alice, bob, ...accounts]) =>
         it('Check User Matrix ', async () => {
             const address = contractInstance.address
 
-            console.log("is User Active 10 :")
+            // console.log("is User Active 10 :")
 
             let usersX4Matrix = await contractInstance.usersX4Matrix(owner, 4)
-            console.log(`Owner X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Owner X4 matrix:`)
+            // console.log(usersX4Matrix)
             usersX4Matrix = await contractInstance.usersX4Matrix(alice, 4)
-            console.log(`Alice X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Alice X4 matrix:`)
+            // console.log(usersX4Matrix)
 
             //------------------------------------------------------------------ registration
             await contractInstance.sendTransaction({ from: accounts[5], data: bob, gasLimit: 6721975, to: address, value: REGISTRATION_FEE })
@@ -33,20 +33,20 @@ contract('Voomo - Level 4 overflow tests', ([owner, alice, bob, ...accounts]) =>
             assert.equal(userExists, true)
 
             //assert.equal(isUserActiveX3Level, true)
-            console.log("is User Active 11 :")
-            console.log(" -------------------------------------------------")
-            console.log(await web3.eth.getBalance(bob))
+            // console.log("is User Active 11 :")
+            // console.log(" -------------------------------------------------")
+            // console.log(await web3.eth.getBalance(bob))
 
 
             await contractInstance.buyNewLevel(1, 4, { from: accounts[5], value: LEVEL_4_FEE })
             await contractInstance.buyNewLevel(2, 4, { from: accounts[5], value: LEVEL_4_FEE })
 
             usersX4Matrix = await contractInstance.usersX4Matrix(owner, 4)
-            console.log(`Owner X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Owner X4 matrix:`)
+            // console.log(usersX4Matrix)
             usersX4Matrix = await contractInstance.usersX4Matrix(alice, 4)
-            console.log(`Alice X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Alice X4 matrix:`)
+            // console.log(usersX4Matrix)
 
             //------------------------------------------------------------------ registration
             await contractInstance.sendTransaction({ from: accounts[10], data: bob, gasLimit: 6721975, to: address, value: REGISTRATION_FEE })
@@ -54,19 +54,19 @@ contract('Voomo - Level 4 overflow tests', ([owner, alice, bob, ...accounts]) =>
             assert.equal(userExists, true)
 
             //assert.equal(isUserActiveX3Level, true)
-            console.log("is User Active 12 :")
-            console.log(" -------------------------------------------------")
-            console.log(await web3.eth.getBalance(bob))
+            // console.log("is User Active 12 :")
+            // console.log(" -------------------------------------------------")
+            // console.log(await web3.eth.getBalance(bob))
 
             await contractInstance.buyNewLevel(1, 4, { from: accounts[10], value: LEVEL_4_FEE })
             await contractInstance.buyNewLevel(2, 4, { from: accounts[10], value: LEVEL_4_FEE })
 
             usersX4Matrix = await contractInstance.usersX4Matrix(owner, 4)
-            console.log(`Owner X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Owner X4 matrix:`)
+            // console.log(usersX4Matrix)
             usersX4Matrix = await contractInstance.usersX4Matrix(alice, 4)
-            console.log(`Alice X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Alice X4 matrix:`)
+            // console.log(usersX4Matrix)
 
             //------------------------------------------------------------------ registration
             await contractInstance.sendTransaction({ from: accounts[11], data: bob, gasLimit: 6721975, to: address, value: REGISTRATION_FEE })
@@ -74,19 +74,19 @@ contract('Voomo - Level 4 overflow tests', ([owner, alice, bob, ...accounts]) =>
             assert.equal(userExists, true)
 
             //assert.equal(isUserActiveX3Level, true)
-            console.log("is User Active 13 :")
-            console.log(" -------------------------------------------------")
-            console.log(await web3.eth.getBalance(bob))
+            // console.log("is User Active 13 :")
+            // console.log(" -------------------------------------------------")
+            // console.log(await web3.eth.getBalance(bob))
 
             await contractInstance.buyNewLevel(1, 4, { from: accounts[11], value: LEVEL_4_FEE })
             await contractInstance.buyNewLevel(2, 4, { from: accounts[11], value: LEVEL_4_FEE })
 
             usersX4Matrix = await contractInstance.usersX4Matrix(owner, 4)
-            console.log(`Owner X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Owner X4 matrix:`)
+            // console.log(usersX4Matrix)
             usersX4Matrix = await contractInstance.usersX4Matrix(alice, 4)
-            console.log(`Alice X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Alice X4 matrix:`)
+            // console.log(usersX4Matrix)
 
             //------------------------------------------------------------------ registration
             await contractInstance.sendTransaction({ from: accounts[12], data: bob, gasLimit: 6721975, to: address, value: REGISTRATION_FEE })
@@ -94,19 +94,19 @@ contract('Voomo - Level 4 overflow tests', ([owner, alice, bob, ...accounts]) =>
             assert.equal(userExists, true)
 
             //assert.equal(isUserActiveX3Level, true)
-            console.log("is User Active 14 :")
-            console.log(" -------------------------------------------------")
-            console.log(await web3.eth.getBalance(bob))
+            // console.log("is User Active 14 :")
+            // console.log(" -------------------------------------------------")
+            // console.log(await web3.eth.getBalance(bob))
 
             await contractInstance.buyNewLevel(1, 4, { from: accounts[12], value: LEVEL_4_FEE })
             await contractInstance.buyNewLevel(2, 4, { from: accounts[12], value: LEVEL_4_FEE })
 
             usersX4Matrix = await contractInstance.usersX4Matrix(owner, 4)
-            console.log(`Owner X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Owner X4 matrix:`)
+            // console.log(usersX4Matrix)
             usersX4Matrix = await contractInstance.usersX4Matrix(alice, 4)
-            console.log(`Alice X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Alice X4 matrix:`)
+            // console.log(usersX4Matrix)
 
             //------------------------------------------------------------------ registration
             await contractInstance.sendTransaction({ from: accounts[13], data: bob, gasLimit: 6721975, to: address, value: REGISTRATION_FEE })
@@ -114,19 +114,19 @@ contract('Voomo - Level 4 overflow tests', ([owner, alice, bob, ...accounts]) =>
             assert.equal(userExists, true)
 
             //assert.equal(isUserActiveX3Level, true)
-            console.log("is User Active 15 :")
-            console.log(" -------------------------------------------------")
-            console.log(await web3.eth.getBalance(bob))
+            // console.log("is User Active 15 :")
+            // console.log(" -------------------------------------------------")
+            // console.log(await web3.eth.getBalance(bob))
 
             await contractInstance.buyNewLevel(1, 4, { from: accounts[13], value: LEVEL_4_FEE })
             await contractInstance.buyNewLevel(2, 4, { from: accounts[13], value: LEVEL_4_FEE })
 
             usersX4Matrix = await contractInstance.usersX4Matrix(owner, 4)
-            console.log(`Owner X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Owner X4 matrix:`)
+            // console.log(usersX4Matrix)
             usersX4Matrix = await contractInstance.usersX4Matrix(alice, 4)
-            console.log(`Alice X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Alice X4 matrix:`)
+            // console.log(usersX4Matrix)
 
             //------------------------------------------------------------------ registration
             await contractInstance.sendTransaction({ from: accounts[14], data: bob, gasLimit: 6721975, to: address, value: REGISTRATION_FEE })
@@ -134,19 +134,19 @@ contract('Voomo - Level 4 overflow tests', ([owner, alice, bob, ...accounts]) =>
             assert.equal(userExists, true)
 
             //assert.equal(isUserActiveX3Level, true)
-            console.log("is User Active 16 :")
-            console.log(" -------------------------------------------------")
-            console.log(await web3.eth.getBalance(bob))
+            // console.log("is User Active 16 :")
+            // console.log(" -------------------------------------------------")
+            // console.log(await web3.eth.getBalance(bob))
 
             await contractInstance.buyNewLevel(1, 4, { from: accounts[14], value: LEVEL_4_FEE })
             await contractInstance.buyNewLevel(2, 4, { from: accounts[14], value: LEVEL_4_FEE })
 
             usersX4Matrix = await contractInstance.usersX4Matrix(owner, 4)
-            console.log(`Owner X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Owner X4 matrix:`)
+            // console.log(usersX4Matrix)
             usersX4Matrix = await contractInstance.usersX4Matrix(alice, 4)
-            console.log(`Alice X4 matrix:`)
-            console.log(usersX4Matrix)
+            // console.log(`Alice X4 matrix:`)
+            // console.log(usersX4Matrix)
         })
     })
 })

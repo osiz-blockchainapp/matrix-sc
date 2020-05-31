@@ -130,7 +130,7 @@ contract('Voomo - Overflow checks', ([owner, alice, bob, max, jhon,...accounts])
             await contractInstance.registration(owner, { from: accounts[0], value: REGISTRATION_FEE })
 
             try {
-                for (let i= 1; i < accounts.length; i++ ) {
+                for (let i= 1; i < 20; i++ ) {
                     await contractInstance.registration(accounts[i - 1], { from: accounts[i], value: REGISTRATION_FEE })
                 }
             } catch (error) {
@@ -138,9 +138,9 @@ contract('Voomo - Overflow checks', ([owner, alice, bob, max, jhon,...accounts])
             }
 
             await contractInstance.buyNewLevel(1, 2, { from: accounts[0], value: LEVEL_2_FEE })
-            await contractInstance.buyNewLevel(1, 2, { from: accounts[accounts.length-1], value: LEVEL_2_FEE })
+            await contractInstance.buyNewLevel(1, 2, { from: accounts[19], value: LEVEL_2_FEE })
             await contractInstance.buyNewLevel(2, 2, { from: accounts[0], value: LEVEL_2_FEE })
-            await contractInstance.buyNewLevel(2, 2, { from: accounts[accounts.length-1], value: LEVEL_2_FEE })
+            await contractInstance.buyNewLevel(2, 2, { from: accounts[19], value: LEVEL_2_FEE })
         })
     })
 })

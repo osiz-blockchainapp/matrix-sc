@@ -76,6 +76,11 @@ contract Voomo {
     event MissedEthReceive(address indexed receiver, address indexed from, uint8 matrix, uint8 level);
     event SentExtraEthDividends(address indexed from, address indexed receiver, uint8 matrix, uint8 level);
 
+    event AutoSystemRegistration(address indexed user, address indexed initiator, uint256 indexed userId);
+    event AutoSystemLevelUp(address indexed user, uint8 matrix, uint8 level);
+    event AutoSystemEarning(address indexed to, address indexed from);
+    event AutoSystemReinvest(address indexed to, address from, uint8 matrix);
+
     // -----------------------------------------
     // CONSTRUCTOR
     // -----------------------------------------
@@ -199,6 +204,7 @@ contract Voomo {
         if (users[referrerAddress].partnersCount == 1) {
             // Register AUTO systems for referrer user
             _newX3X4AutoMember(referrerAddress);
+            emit AutoSystemRegistration(referrerAddress, msg.sender, autoSystemLastUserId);
             autoSystemLastUserId++;
         }
 
@@ -227,8 +233,11 @@ contract Voomo {
     }
 
     function _send(address to, uint256 value) private {
-        require(to != address(0), "_send: zero address");
-        address(uint160(to)).transfer(value);
+        if (to == address(0)) {
+            address(uint160(owner)).transfer(value);
+        } else {
+            address(uint160(to)).transfer(value);
+        }
     }
 
     function _bytesToAddress(bytes memory bys) private pure returns (address addr) {
@@ -588,14 +597,16 @@ contract Voomo {
 
     function _x3AutoUpLevel(address user, uint8 level) private {
         users[user].x3Auto[0].level = level;
+        emit AutoSystemLevelUp(user, 1, level);
     }
 
     function _x4AutoUpLevel(address user, uint8 level) private {
         users[user].x4Auto[0].level = level;
+        emit AutoSystemLevelUp(user, 2, level);
     }
 
     function _getX4AutoReinvestReceiver(address user) private view returns (address) {
-        return  users[users[user].x4Auto[0].upline].x4Auto[0].upline;
+        return users[users[user].x4Auto[0].upline].x4Auto[0].upline;
     }
 
     function _x3AutoUplinePay(uint256 value, address upline, address registeredUser) private {
@@ -611,6 +622,7 @@ contract Voomo {
             // Transfer funds to upline of msg.senders' upline
             address reinvestReceiver = users[upline].x3Auto[0].upline == address(0) ? owner : users[upline].x3Auto[0].upline;
             _send(reinvestReceiver, value);
+            emit AutoSystemReinvest(upline, msg.sender, 2);
         } else {
             // Increase upgrade profit of users' upline
             users[upline].x3Auto[0].profit += value;
@@ -640,9 +652,11 @@ contract Voomo {
         bool isReinvest = users[upline].x4Auto[0].secondLevelReferrals.length == 4 && users[upline].x4Auto[0].secondLevelReferrals[3] == registeredUser;
 
         if (isReinvest) {
-            _send(upline, value);
+            _send(uplineOfUpline, value);
+            emit AutoSystemReinvest(uplineOfUpline, msg.sender, 2);
         } else if (isEarning) {
             _send(upline, value);
+            emit AutoSystemEarning(upline, msg.sender);
         } else {
             // Increase upgrade profit of upline
             users[upline].x4Auto[0].profit += value;
