@@ -299,7 +299,7 @@ contract('Voomo smart contract tests', (accounts) => {
     })
 
     describe('Loop of registrations', async () => {
-        it('Register rest', accounts.length - 5 ,'users', async function () {
+        it('Register rest users', async function () {
             this.timeout(800000);
             for (let i = 5; i < accounts.length; i ++) {
                 // Pre-payment values from contract
