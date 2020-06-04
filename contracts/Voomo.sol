@@ -66,8 +66,6 @@ contract Voomo {
     mapping(uint256 => address) public userIds;
     mapping(address => uint256) public balances;
     mapping(uint8 => uint256) public levelPrice;
-    mapping(uint8 => uint256) public x3AutoUpgradeLevels;
-    mapping(uint8 => uint256) public x4AutoUpgradeLevels;
 
     event Registration(address indexed user, address indexed referrer, uint256 indexed userId, uint256 referrerId);
     event Reinvest(address indexed user, address indexed currentReferrer, address indexed caller, uint8 matrix, uint8 level);
@@ -101,28 +99,6 @@ contract Voomo {
         levelPrice[10] = 12.8 ether;
         levelPrice[11] = 25.6 ether;
         levelPrice[12] = 51.2 ether;
-
-        x3AutoUpgradeLevels[1] = 0.025 ether;
-        x3AutoUpgradeLevels[2] = 0.05 ether;
-        x3AutoUpgradeLevels[3] = 0.15 ether;
-        x3AutoUpgradeLevels[4] = 0.45 ether;
-        x3AutoUpgradeLevels[5] = 1.35 ether;
-        x3AutoUpgradeLevels[6] = 4.05 ether;
-        x3AutoUpgradeLevels[7] = 12.15 ether;
-        x3AutoUpgradeLevels[8] = 36.45 ether;
-        x3AutoUpgradeLevels[9] = 109.35 ether;
-        x3AutoUpgradeLevels[10] = 328.05 ether;
-
-        x4AutoUpgradeLevels[1] = 0.025 ether;
-        x4AutoUpgradeLevels[2] = 0.05 ether;
-        x4AutoUpgradeLevels[3] = 0.2 ether;
-        x4AutoUpgradeLevels[4] = 0.8 ether;
-        x4AutoUpgradeLevels[5] = 3.2 ether;
-        x4AutoUpgradeLevels[6] = 12.8 ether;
-        x4AutoUpgradeLevels[7] = 51.2 ether;
-        x4AutoUpgradeLevels[8] = 204.8 ether;
-        x4AutoUpgradeLevels[9] = 819.2 ether;
-        x4AutoUpgradeLevels[10] = 3276.8 ether;
 
         User memory user = User({
             id: 1,
@@ -617,18 +593,22 @@ contract Voomo {
 
         bool isReinvest = users[upline].x3Auto[0].referrals.length == 3 && users[upline].x3Auto[0].referrals[2] == registeredUser;
 
-        // Re-Invest check
         if (isReinvest) {
             // Transfer funds to upline of msg.senders' upline
-            address reinvestReceiver = users[upline].x3Auto[0].upline == address(0) ? owner : users[upline].x3Auto[0].upline;
-            _send(reinvestReceiver, value);
-            emit AutoSystemReinvest(upline, msg.sender, 2);
+            address reinvestReceiver = _findFreeX3AutoReferrer(registeredUser);
+            if (reinvestReceiver == address(0)) {
+                reinvestReceiver = owner;
+            }
+
+            emit AutoSystemReinvest(reinvestReceiver, msg.sender, 2);
+
+            return _send(reinvestReceiver, value);
         } else {
             // Increase upgrade profit of users' upline
             users[upline].x3Auto[0].profit += value;
 
             // The limit, which needed to my upline for achieving a new level
-            uint256 levelMaxCap = x3AutoUpgradeLevels[users[upline].x3Auto[0].level + 1];
+            uint256 levelMaxCap = levelPrice[users[upline].x3Auto[0].level + 1];
 
             // If upline level limit reached
             if (users[upline].x3Auto[0].profit >= levelMaxCap) {
@@ -652,17 +632,20 @@ contract Voomo {
         bool isReinvest = users[upline].x4Auto[0].secondLevelReferrals.length == 4 && users[upline].x4Auto[0].secondLevelReferrals[3] == registeredUser;
 
         if (isReinvest) {
-            _send(uplineOfUpline, value);
-            emit AutoSystemReinvest(uplineOfUpline, msg.sender, 2);
+            // Transfer funds to upline of msg.senders' upline
+            address reinvestReceiver = _findFreeX4AutoReferrer(upline);
+            emit AutoSystemReinvest(reinvestReceiver, msg.sender, 2);
+
+            return _send(reinvestReceiver, value);
         } else if (isEarning) {
-            _send(upline, value);
             emit AutoSystemEarning(upline, msg.sender);
+            return _send(upline, value);
         } else {
             // Increase upgrade profit of upline
             users[upline].x4Auto[0].profit += value;
 
             // The limit, which needed to my upline for achieving a new level
-            uint256 levelMaxCap = x4AutoUpgradeLevels[users[upline].x4Auto[0].level + 1];
+            uint256 levelMaxCap = levelPrice[users[upline].x4Auto[0].level + 1];
 
             // If upline level limit reached
             if (users[upline].x4Auto[0].profit >= levelMaxCap) {
@@ -674,6 +657,27 @@ contract Voomo {
         }
     }
 
+    function _findFreeX3AutoReferrer(address userAddress) private view returns (address) {
+        while (true) {
+            address upline = users[userAddress].x3Auto[0].upline;
+            if (users[upline].x3Auto[0].referrals[2] != userAddress) {
+                return upline;
+            }
+
+            userAddress = upline;
+        }
+    }
+
+    function _findFreeX4AutoReferrer(address userAddress) private view returns (address) {
+        while (true) {
+            address upline = _getX4AutoReinvestReceiver(userAddress);
+            if (users[upline].x4Auto[0].secondLevelReferrals[3] != userAddress) {
+                return upline;
+            }
+
+            userAddress = upline;
+        }
+    }
     // -----------------------------------------
     // GETTERS
     // -----------------------------------------
