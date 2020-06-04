@@ -660,7 +660,7 @@ contract Voomo {
     function _findFreeX3AutoReferrer(address userAddress) private view returns (address) {
         while (true) {
             address upline = users[userAddress].x3Auto[0].upline;
-            if (users[upline].x3Auto[0].referrals[2] != userAddress) {
+            if (upline == address(0) || users[upline].x3Auto[0].referrals[2] != userAddress) {
                 return upline;
             }
 
@@ -744,7 +744,7 @@ contract Voomo {
         );
     }
 
-    function getUserX3_AUTO(address user) external view returns (
+    function getUserX3_Auto(address user) external view returns (
         uint256 id,
         uint8 level,
         uint256 upline_id,
@@ -762,7 +762,7 @@ contract Voomo {
         );
     }
 
-    function getUserX4_AUTO(address user) external view returns (
+    function getUserX4_Auto(address user) external view returns (
         uint256 id,
         uint8 level,
         uint256 upline_id,
