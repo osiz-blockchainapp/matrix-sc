@@ -93,10 +93,10 @@ contract('Voomo smart contract tests', (accounts) => {
             console.log(`X3: #${x3ReinvestReceiver.id} reinvest received (+ 0.025)`)
         } else {
             if (isFirstUpgrade) {
-                assert.deepEqual(x3UplineAuto['profit'], ether('0.025'))
+                assert.equal(x3UplineAuto['profit'].toString(), ether('0.025').toString())
                 console.log(`X3: #${x3Upline.id} upgrade (+ 0.025)`)
             } else if (isSecondUpgrade) {
-                assert.deepEqual(x3UplineAuto['profit'], ether('0'))
+                assert.equal(x3UplineAuto['profit'].toString(), ether('0').toString())
                 console.log(`X3: #${x3Upline.id} new level ${x3UplineAuto['level']} achieved`)
             }
         }
@@ -118,10 +118,10 @@ contract('Voomo smart contract tests', (accounts) => {
             console.log(`X4: #${x4UplineUplineData['id']} earning (+ 0.025)`)
         } else {
             if (isFirstUpgrade) {
-                assert.deepEqual(x4UplineUplineData['profit'], ether('0.025'))
+                assert.equal(x4UplineUplineData['profit'].toString(), ether('0.025').toString())
                 console.log(`X4: #${x4UplineUplineData['id']} upgrade (+ 0.025)`)
             } else if (isSecondUpgrade) {
-                assert.deepEqual(x4UplineUplineData['profit'], ether('0'))
+                assert.equal(x4UplineUplineData['profit'].toString(), ether('0').toString())
                 console.log(`X4: #${x4UplineUplineData['id']} new level ${x4UplineUplineData['level']} achieved`)
 
                 const ownerAddr = await contractInstance.owner.call()
@@ -182,7 +182,7 @@ contract('Voomo smart contract tests', (accounts) => {
             await contractInstance.registration(alice, { from: bob, value: REGISTRATION_FEE })
 
             const balanceIncreased = await balanceTracker.delta()
-            assert.deepEqual(balanceIncreased.toString(), ether('0.05').toString())
+            assert.equal(balanceIncreased.toString(), ether('0.05').toString())
 
             const userExists = await contractInstance.isUserExists(bob)
             assert.equal(userExists, true)
@@ -217,9 +217,9 @@ contract('Voomo smart contract tests', (accounts) => {
             const aliceBalanceIncreased = await aliceBalanceTracker.delta()
             const bobBalanceIncreased = await bobBalanceTracker.delta()
 
-            assert.deepEqual(ownerBalanceIncreased.toString(), ether('0.075').toString())
-            assert.deepEqual(bobBalanceIncreased.toString(), ether('0.025').toString())
-            assert.deepEqual(aliceBalanceIncreased.toString(), ether('0.025').toString())
+            assert.equal(ownerBalanceIncreased.toString(), ether('0.075').toString())
+            assert.equal(bobBalanceIncreased.toString(), ether('0.025').toString())
+            assert.equal(aliceBalanceIncreased.toString(), ether('0.025').toString())
 
             const userExists = await contractInstance.isUserExists(john)
             assert.equal(userExists, true)
@@ -261,10 +261,10 @@ contract('Voomo smart contract tests', (accounts) => {
             const bobBalanceIncreased = await bobBalanceTracker.delta()
             const johnBalanceIncreased = await johnBalanceTracker.delta()
 
-            assert.deepEqual(ownerBalanceIncreased.toString(), ether('0.025').toString())
-            assert.deepEqual(aliceBalanceIncreased.toString(), ether('0.0').toString())
-            assert.deepEqual(bobBalanceIncreased.toString(), ether('0.025').toString())
-            assert.deepEqual(johnBalanceIncreased.toString(), ether('0.025').toString())
+            assert.equal(ownerBalanceIncreased.toString(), ether('0.025').toString())
+            assert.equal(aliceBalanceIncreased.toString(), ether('0.0').toString())
+            assert.equal(bobBalanceIncreased.toString(), ether('0.025').toString())
+            assert.equal(johnBalanceIncreased.toString(), ether('0.025').toString())
 
             const userExists = await contractInstance.isUserExists(tony)
             assert.equal(userExists, true)
@@ -299,7 +299,7 @@ contract('Voomo smart contract tests', (accounts) => {
     })
 
     describe('Loop of registrations', async () => {
-        it('Register rest', accounts.length - 5 ,'users', async function () {
+        it('Register rest users', async function () {
             this.timeout(800000);
             for (let i = 5; i < accounts.length; i ++) {
                 // Pre-payment values from contract

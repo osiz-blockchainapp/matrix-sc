@@ -20,7 +20,8 @@
   "scripts": {
     "compile": "truffle compile",
     "deploy": "truffle deploy --reset",
-    "test": "truffle test --reset"
+    "test": "truffle test",
+    "test:auto": "truffle test ./test/05_AutoSystems.test.js"
   },
   "repository": {
     "type": "git",
