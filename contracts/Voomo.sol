@@ -687,7 +687,15 @@ contract Voomo {
     }
 
     function findFreeX4Referrer(address userAddress, uint8 level) external view returns (address) {
-        return _findFreeX4Referrer(userAddress, level);
+        return _findFreeX3AutoReferrer(userAddress);
+    }
+
+    function findFreeX3AutoReferrer(address userAddress) external view returns (address) {
+        return _findFreeX3AutoReferrer(userAddress);
+    }
+
+    function findFreeX4AutoReferrer(address userAddress) external view returns (address) {
+        return _findFreeX4AutoReferrer(userAddress);
     }
 
     function findAutoUplines() external view returns(address, address, uint256, uint256) {
