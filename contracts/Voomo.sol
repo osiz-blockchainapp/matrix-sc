@@ -77,7 +77,7 @@ contract Voomo {
     event AutoSystemRegistration(address indexed user, address indexed initiator, uint256 indexed userId);
     event AutoSystemLevelUp(address indexed user, uint8 matrix, uint8 level);
     event AutoSystemEarning(address indexed to, address indexed from);
-    event AutoSystemReinvest(address indexed to, address from, uint8 matrix);
+    event AutoSystemReinvest(address indexed to, address from, uint256 amount, uint8 matrix);
 
     // -----------------------------------------
     // CONSTRUCTOR
@@ -209,11 +209,8 @@ contract Voomo {
     }
 
     function _send(address to, uint256 value) private {
-        if (to == address(0)) {
-            address(uint160(owner)).transfer(value);
-        } else {
-            address(uint160(to)).transfer(value);
-        }
+        require(to != address(0), "_send: zero address");
+        address(uint160(to)).transfer(value);
     }
 
     function _bytesToAddress(bytes memory bys) private pure returns (address addr) {
@@ -585,22 +582,18 @@ contract Voomo {
         return users[users[user].x4Auto[0].upline].x4Auto[0].upline;
     }
 
-    function _x3AutoUplinePay(uint256 value, address upline, address registeredUser) private {
+    function _x3AutoUplinePay(uint256 value, address upline, address downline) private {
         // If upline not defined
         if (upline == address(0)) {
             return _send(owner, value);
         }
 
-        bool isReinvest = users[upline].x3Auto[0].referrals.length == 3 && users[upline].x3Auto[0].referrals[2] == registeredUser;
+        bool isReinvest = users[upline].x3Auto[0].referrals.length == 3 && users[upline].x3Auto[0].referrals[2] == downline;
 
         if (isReinvest) {
             // Transfer funds to upline of msg.senders' upline
-            address reinvestReceiver = _findFreeX3AutoReferrer(registeredUser);
-            if (reinvestReceiver == address(0)) {
-                reinvestReceiver = owner;
-            }
-
-            emit AutoSystemReinvest(reinvestReceiver, msg.sender, 2);
+            address reinvestReceiver = _findFreeX3AutoReferrer(downline);
+            emit AutoSystemReinvest(reinvestReceiver, downline, value, 1);
 
             return _send(reinvestReceiver, value);
         } else {
@@ -615,32 +608,32 @@ contract Voomo {
                 users[upline].x3Auto[0].profit = 0;
 
                 _x3AutoUpLevel(upline, users[upline].x3Auto[0].level + 1);
-                _x3AutoUplinePay(levelMaxCap, users[upline].x3Auto[0].upline, registeredUser);
+                _x3AutoUplinePay(levelMaxCap, users[upline].x3Auto[0].upline, upline);
             }
         }
     }
 
-    function _x4AutoUplinePay(uint256 value, address upline, address registeredUser) private {
-        address uplineOfUpline = _getX4AutoReinvestReceiver(upline);
-
+    function _x4AutoUplinePay(uint256 value, address upline, address downline) private {
         // If upline not defined
         if (upline == address(0)) {
             return _send(owner, value);
         }
 
-        bool isEarning = users[upline].x4Auto[0].secondLevelReferrals.length == 3 && users[upline].x4Auto[0].secondLevelReferrals[2] == registeredUser;
-        bool isReinvest = users[upline].x4Auto[0].secondLevelReferrals.length == 4 && users[upline].x4Auto[0].secondLevelReferrals[3] == registeredUser;
+        bool isEarning = users[upline].x4Auto[0].secondLevelReferrals.length == 3 && users[upline].x4Auto[0].secondLevelReferrals[2] == downline;
+        bool isReinvest = users[upline].x4Auto[0].secondLevelReferrals.length == 4 && (users[upline].x4Auto[0].secondLevelReferrals[3] == downline || users[upline].x4Auto[0].secondLevelReferrals[2] == downline);
 
         if (isReinvest) {
             // Transfer funds to upline of msg.senders' upline
             address reinvestReceiver = _findFreeX4AutoReferrer(upline);
-            emit AutoSystemReinvest(reinvestReceiver, msg.sender, 2);
+            emit AutoSystemReinvest(reinvestReceiver, downline, value, 2);
 
             return _send(reinvestReceiver, value);
         } else if (isEarning) {
-            emit AutoSystemEarning(upline, msg.sender);
+            emit AutoSystemEarning(upline, downline);
             return _send(upline, value);
         } else {
+            address uplineOfUpline = _getX4AutoReinvestReceiver(upline);
+
             // Increase upgrade profit of upline
             users[upline].x4Auto[0].profit += value;
 
@@ -652,7 +645,7 @@ contract Voomo {
                 users[upline].x4Auto[0].profit = 0;
 
                 _x4AutoUpLevel(upline, users[upline].x4Auto[0].level + 1);
-                _x4AutoUplinePay(levelMaxCap, uplineOfUpline, registeredUser);
+                _x4AutoUplinePay(levelMaxCap, uplineOfUpline, upline);
             }
         }
     }
@@ -660,7 +653,12 @@ contract Voomo {
     function _findFreeX3AutoReferrer(address userAddress) private view returns (address) {
         while (true) {
             address upline = users[userAddress].x3Auto[0].upline;
-            if (upline == address(0) || users[upline].x3Auto[0].referrals[2] != userAddress) {
+
+            if (upline == address(0) || userAddress == owner) {
+                return owner;
+            }
+
+            if (users[upline].x3Auto[0].referrals[2] != userAddress) {
                 return upline;
             }
 
@@ -671,6 +669,11 @@ contract Voomo {
     function _findFreeX4AutoReferrer(address userAddress) private view returns (address) {
         while (true) {
             address upline = _getX4AutoReinvestReceiver(userAddress);
+
+            if (upline == address(0) || userAddress == owner) {
+                return owner;
+            }
+
             if (users[upline].x4Auto[0].secondLevelReferrals[3] != userAddress) {
                 return upline;
             }
@@ -752,7 +755,7 @@ contract Voomo {
         );
     }
 
-    function getUserX3_Auto(address user) external view returns (
+    function getUserX3Auto(address user) external view returns (
         uint256 id,
         uint8 level,
         uint256 upline_id,
@@ -770,7 +773,7 @@ contract Voomo {
         );
     }
 
-    function getUserX4_Auto(address user) external view returns (
+    function getUserX4Auto(address user) external view returns (
         uint256 id,
         uint8 level,
         uint256 upline_id,
