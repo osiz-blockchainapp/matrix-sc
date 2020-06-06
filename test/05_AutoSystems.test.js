@@ -318,8 +318,11 @@ contract('Voomo smart contract tests', (accounts) => {
 
     describe('Loop of registrations', async () => {
         it('Register rest users', async function () {
-            this.timeout(800000);
+            this.timeout(8000000);
+            let ownerProfit = 0
             for (let i = 5; i < accounts.length; i ++) {
+                const balanceTracker = await balance.tracker(owner)
+
                 // Pre-payment values from contract
                 const newUserId = (await contractInstance.autoSystemLastUserId.call()).toString()
                 const { x3Upline, x4Upline } = await getUplines()
@@ -338,11 +341,12 @@ contract('Voomo smart contract tests', (accounts) => {
 
                 const eventData = await filterAutoEventLogs(receipt)
                 console.table(eventData)
-                // Validate X3 Upline
-                // await x3UplineChecks(x3Upline, newAutoUser, receipt)
 
-                // Validate X4 Upline
-                // await x4UplineChecks(x4Upline, newAutoUser)
+                const balanceIncreased = await balanceTracker.delta()
+                if (balanceIncreased.toString() !== '0') {
+                    ownerProfit = ownerProfit + (balanceIncreased.toString() / 10**18)
+                    console.log('User ID 1 Profit increased:', ownerProfit.toFixed(3), 'ETH')
+                }
 
                 console.log('------------------------')
             }
