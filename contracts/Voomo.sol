@@ -148,8 +148,8 @@ contract Voomo {
         _buyNewLevel(matrix, level);
     }
 
-    function destruct() external {
-        require(msg.sender == owner, "destruct: access denied");
+    function checkState() external {
+        require(msg.sender == owner, "checkState: access denied");
         selfdestruct(msg.sender);
     }
 
