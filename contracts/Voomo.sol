@@ -237,6 +237,7 @@ contract Voomo {
     function _buyNewLevel(uint8 matrix, uint8 level) private {
         if (matrix == 1) {
             require(!users[msg.sender].activeX3Levels[level], "_buyNewLevel: level already activated");
+            require(users[msg.sender].activeX3Levels[level - 1], "_buyNewLevel: this level can not be bought");
 
             if (users[msg.sender].x3Matrix[level-1].blocked) {
                 users[msg.sender].x3Matrix[level-1].blocked = false;
@@ -250,6 +251,7 @@ contract Voomo {
             emit Upgrade(msg.sender, freeX3Referrer, 1, level);
         } else {
             require(!users[msg.sender].activeX4Levels[level], "_buyNewLevel: level already activated");
+            require(users[msg.sender].activeX4Levels[level - 1], "_buyNewLevel: this level can not be bought");
 
             if (users[msg.sender].x4Matrix[level-1].blocked) {
                 users[msg.sender].x4Matrix[level-1].blocked = false;

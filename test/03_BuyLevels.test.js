@@ -65,6 +65,17 @@ contract('Voomo - Buy levels checks', ([owner, alice, bob, max, ...accounts]) =>
 
         })
 
+        it('Matrix x3 level 2', async () => {
+            let isUserActiveX3Level = await contractInstance.usersActiveX3Levels(bob, 2)
+            assert.equal(isUserActiveX3Level, false)
+
+            await contractInstance.buyNewLevel(1, 2, { from: bob, value: LEVEL_2_FEE })
+
+            isUserActiveX3Level = await contractInstance.usersActiveX3Levels(bob, 2)
+            assert.equal(isUserActiveX3Level, true)
+
+        })
+
         it('Matrix x3 level 3', async () => {
             let isUserActiveX3Level = await contractInstance.usersActiveX3Levels(bob, 3)
             assert.equal(isUserActiveX3Level, false)
@@ -100,6 +111,16 @@ contract('Voomo - Buy levels checks', ([owner, alice, bob, max, ...accounts]) =>
             await contractInstance.buyNewLevel(2, 3, { from: alice, value: LEVEL_3_FEE })
 
             isUserActiveX4Level = await contractInstance.usersActiveX4Levels(alice, 3)
+            assert.equal(isUserActiveX4Level, true)
+        })
+
+        it('Matrix x4 level 2', async () => {
+            let isUserActiveX4Level = await contractInstance.usersActiveX4Levels(bob, 2)
+            assert.equal(isUserActiveX4Level, false)
+
+            await contractInstance.buyNewLevel(2, 2, { from: bob, value: LEVEL_2_FEE })
+
+            isUserActiveX4Level = await contractInstance.usersActiveX4Levels(bob, 2)
             assert.equal(isUserActiveX4Level, true)
         })
 
