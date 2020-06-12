@@ -6,7 +6,7 @@ const { balance, ether, expectRevert, expectEvent } = require('openzeppelin-test
 const { MIN_TEST_USERS_COUNT, ZERO_ADDRESS, REGISTRATION_FEE } = require('../constants')
 
 
-contract('Voomo smart contract tests', (accounts) => {
+contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
     let contractInstance
     const owner = accounts[0].toString()
 

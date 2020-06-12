@@ -21,7 +21,8 @@
     "compile": "truffle compile",
     "deploy": "truffle deploy --reset",
     "test": "truffle test",
-    "test:auto": "truffle test ./test/05_AutoSystems.test.js"
+    "test:auto": "truffle test ./test/05_AutoSystems.test.js",
+    "test:manual": "truffle test ./test/06_ManualSystems.test.js"
   },
   "repository": {
     "type": "git",
