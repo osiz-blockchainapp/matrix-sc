@@ -10,6 +10,7 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "dotenv": "^8.2.0",
+    "ganache-cli": "^6.9.1",
     "openzeppelin-test-helpers": "^0.5.1",
     "truffle": "^5.1.26",
     "truffle-flattener": "^1.4.4",
@@ -20,6 +21,7 @@
   "scripts": {
     "compile": "truffle compile",
     "deploy": "truffle deploy --reset",
+    "ganache": "ganache-cli --gas-price 0 -a 30",
     "test": "truffle test",
     "test:auto": "truffle test ./test/05_AutoSystems.test.js",
     "test:manual": "truffle test ./test/06_ManualSystems.test.js"
