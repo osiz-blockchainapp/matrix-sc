@@ -1,5 +1,6 @@
 
 const Voomo = artifacts.require('Voomo.sol')
+const Owner = artifacts.require('Owner.sol')
 
 const assert = require('assert')
 const { balance, ether, expectRevert, expectEvent } = require('openzeppelin-test-helpers')
@@ -8,7 +9,7 @@ const { MIN_TEST_USERS_COUNT, LEVEL_2_FEE, REGISTRATION_FEE } = require('../cons
 
 contract('Voomo smart contract tests (X3/X4 MANUAL)', (accounts) => {
     let contractInstance
-    const owner = accounts[0].toString()
+    let owner
 
     if (accounts.length < MIN_TEST_USERS_COUNT) {
         console.log('Please increase test users count and try again!')
@@ -108,6 +109,7 @@ contract('Voomo smart contract tests (X3/X4 MANUAL)', (accounts) => {
     }
 
     beforeEach(async () => {
+        owner = (await Owner.new(accounts[0].toString(), accounts[0].toString())).address
         contractInstance = await Voomo.new(owner)
     })
 
@@ -153,7 +155,7 @@ contract('Voomo smart contract tests (X3/X4 MANUAL)', (accounts) => {
                 }
 
                 // Register user
-                const receipt = await contractInstance.registration(accounts[referrerID], { from: accounts[i], value: REGISTRATION_FEE })
+                const receipt = await contractInstance.registration(referrerID === 0 ? owner : accounts[referrerID], { from: accounts[i], value: REGISTRATION_FEE })
                 console.log('#', newUserId, 'joined')
 
                 const eventData = await filterAutoEventLogs(receipt, 'X3')

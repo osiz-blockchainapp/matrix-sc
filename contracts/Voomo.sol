@@ -210,7 +210,12 @@ contract Voomo {
 
     function _send(address to, uint256 value) private {
         require(to != address(0), "_send: zero address");
-        address(uint160(to)).transfer(value);
+        if (to == owner) {
+            (bool success, ) = owner.call.value(value)("");
+            require(success, "_send: transfer to owner contract failed.");
+        } else {
+            address(uint160(to)).transfer(value);
+        }
     }
 
     function _bytesToAddress(bytes memory bys) private pure returns (address addr) {

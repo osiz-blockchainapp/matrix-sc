@@ -1,5 +1,6 @@
 
 const Voomo = artifacts.require('Voomo.sol')
+const Owner = artifacts.require('Owner.sol')
 
 const assert = require('assert')
 const { balance, ether, expectRevert, expectEvent } = require('openzeppelin-test-helpers')
@@ -8,7 +9,7 @@ const { MIN_TEST_USERS_COUNT, ZERO_ADDRESS, REGISTRATION_FEE } = require('../con
 
 contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
     let contractInstance
-    const owner = accounts[0].toString()
+    let owner
 
     if (accounts.length < MIN_TEST_USERS_COUNT) {
         console.log('Please increase test users count and try again!')
@@ -151,6 +152,7 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
     }
 
     before(async () => {
+        owner = (await Owner.new(accounts[0].toString(), accounts[0].toString())).address
         contractInstance = await Voomo.new(owner)
     })
 
@@ -321,7 +323,7 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
             this.timeout(8000000);
             let ownerProfit = 0
             for (let i = 5; i < accounts.length; i ++) {
-                const balanceTracker = await balance.tracker(owner)
+                const balanceTracker = await balance.tracker(accounts[0])
 
                 // Pre-payment values from contract
                 const newUserId = (await contractInstance.autoSystemLastUserId.call()).toString()
@@ -344,7 +346,7 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
 
                 const balanceIncreased = await balanceTracker.delta()
                 if (balanceIncreased.toString() !== '0') {
-                    ownerProfit = ownerProfit + (balanceIncreased.toString() / 10**18)
+                    ownerProfit = ownerProfit + ((balanceIncreased.toString() / 10**18) * 2)
                     console.log('User ID 1 Profit increased:', ownerProfit.toFixed(3), 'ETH')
                 }
 
