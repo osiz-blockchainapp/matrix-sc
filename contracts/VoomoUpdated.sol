@@ -1,11 +1,14 @@
 pragma solidity ^0.5.0;
 
 contract SmartMatrixForsage {
+    address public owner;
+    uint256 public lastUserId = 2;
+    uint8 public constant LAST_LEVEL = 12;
 
     struct User {
-        uint id;
+        uint256 id;
         address referrer;
-        uint partnersCount;
+        uint256 partnersCount;
 
         mapping(uint8 => bool) activeX3Levels;
         mapping(uint8 => bool) activeX6Levels;
@@ -18,7 +21,7 @@ contract SmartMatrixForsage {
         address currentReferrer;
         address[] referrals;
         bool blocked;
-        uint reinvestCount;
+        uint256 reinvestCount;
     }
 
     struct X6 {
@@ -26,38 +29,32 @@ contract SmartMatrixForsage {
         address[] firstLevelReferrals;
         address[] secondLevelReferrals;
         bool blocked;
-        uint reinvestCount;
+        uint256 reinvestCount;
 
         address closedPart;
     }
 
-    uint8 public constant LAST_LEVEL = 12;
-
     mapping(address => User) public users;
-    mapping(uint => address) public idToAddress;
-    mapping(uint => address) public userIds;
-    mapping(address => uint) public balances;
+    mapping(uint256 => address) public idToAddress;
+    mapping(uint256 => address) public userIds;
+    mapping(address => uint256) public balances;
+    mapping(uint8 => uint256) public levelPrice;
 
-    uint public lastUserId = 2;
-    address public owner;
-
-    mapping(uint8 => uint) public levelPrice;
-
-    event Registration(address indexed user, address indexed referrer, uint indexed userId, uint referrerId);
+    event Registration(address indexed user, address indexed referrer, uint256 indexed userId, uint256 referrerId);
     event Reinvest(address indexed user, address indexed currentReferrer, address indexed caller, uint8 matrix, uint8 level);
     event Upgrade(address indexed user, address indexed referrer, uint8 matrix, uint8 level);
     event NewUserPlace(address indexed user, address indexed referrer, uint8 matrix, uint8 level, uint8 place);
     event MissedEthReceive(address indexed receiver, address indexed from, uint8 matrix, uint8 level);
     event SentExtraEthDividends(address indexed from, address indexed receiver, uint8 matrix, uint8 level);
 
-
     constructor(address ownerAddress) public {
+        require(ownerAddress != address(0), "constructor: owner address can not be 0x0 address");
+        owner = ownerAddress;
+
         levelPrice[1] = 0.025 ether;
         for (uint8 i = 2; i <= LAST_LEVEL; i++) {
             levelPrice[i] = levelPrice[i-1] * 2;
         }
-
-        owner = ownerAddress;
 
         User memory user = User({
             id: 1,
@@ -214,7 +211,7 @@ contract SmartMatrixForsage {
             address ref = users[referrerAddress].x6Matrix[level].currentReferrer;
             users[ref].x6Matrix[level].secondLevelReferrals.push(userAddress);
 
-            uint len = users[ref].x6Matrix[level].firstLevelReferrals.length;
+            uint256 len = users[ref].x6Matrix[level].firstLevelReferrals.length;
 
             if ((len == 2) &&
                 (users[ref].x6Matrix[level].firstLevelReferrals[0] == referrerAddress) &&
