@@ -707,8 +707,8 @@ contract Voomo {
         return _findFreeX4AutoReferrer(userAddress);
     }
 
-    function findAutoUplines() external view returns(address, address, uint256, uint256) {
-        (address x3UplineAddr, address x4UplineAddr) = _detectUplinesAddresses(autoSystemLastUserId);
+    function findCurrentIdAutoUplines(uint256 userId) external view returns(address, address, uint256, uint256) {
+        (address x3UplineAddr, address x4UplineAddr) = _detectUplinesAddresses(userId);
         return (
             x3UplineAddr,
             x4UplineAddr,
