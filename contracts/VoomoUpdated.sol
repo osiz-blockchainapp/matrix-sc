@@ -47,14 +47,26 @@ contract SmartMatrixForsage {
     event MissedEthReceive(address indexed receiver, address indexed from, uint8 matrix, uint8 level);
     event SentExtraEthDividends(address indexed from, address indexed receiver, uint8 matrix, uint8 level);
 
+    // -----------------------------------------
+    // CONSTRUCTOR
+    // -----------------------------------------
+
     constructor(address ownerAddress) public {
         require(ownerAddress != address(0), "constructor: owner address can not be 0x0 address");
         owner = ownerAddress;
 
-        levelPrice[1] = 0.025 ether;
-        for (uint8 i = 2; i <= LAST_LEVEL; i++) {
-            levelPrice[i] = levelPrice[i-1] * 2;
-        }
+        levelPrice[1] = 0.05 ether;
+        levelPrice[2] = 0.1 ether;
+        levelPrice[3] = 0.2 ether;
+        levelPrice[4] = 0.4 ether;
+        levelPrice[5] = 0.8 ether;
+        levelPrice[6] = 1.6 ether;
+        levelPrice[7] = 3.2 ether;
+        levelPrice[8] = 6.4 ether;
+        levelPrice[9] = 12.8 ether;
+        levelPrice[10] = 25.6 ether;
+        levelPrice[11] = 51.2 ether;
+        levelPrice[12] = 102.4 ether;
 
         User memory user = User({
             id: 1,
@@ -73,16 +85,24 @@ contract SmartMatrixForsage {
         userIds[1] = ownerAddress;
     }
 
+    // -----------------------------------------
+    // FALLBACK
+    // -----------------------------------------
+
     function() external payable {
         if(msg.data.length == 0) {
-            return registration(msg.sender, owner);
+            return _registration(msg.sender, owner);
         }
 
-        registration(msg.sender, bytesToAddress(msg.data));
+        _registration(msg.sender, _bytesToAddress(msg.data));
     }
 
+    // -----------------------------------------
+    // SETTERS
+    // -----------------------------------------
+
     function registrationExt(address referrerAddress) external payable {
-        registration(msg.sender, referrerAddress);
+        _registration(msg.sender, referrerAddress);
     }
 
     function buyNewLevel(uint8 matrix, uint8 level) external payable {
@@ -101,7 +121,7 @@ contract SmartMatrixForsage {
             address freeX3Referrer = findFreeX3Referrer(msg.sender, level);
             users[msg.sender].x3Matrix[level].currentReferrer = freeX3Referrer;
             users[msg.sender].activeX3Levels[level] = true;
-            updateX3Referrer(msg.sender, freeX3Referrer, level);
+            _updateX3Referrer(msg.sender, freeX3Referrer, level);
 
             emit Upgrade(msg.sender, freeX3Referrer, 1, level);
 
@@ -115,13 +135,17 @@ contract SmartMatrixForsage {
             address freeX6Referrer = findFreeX6Referrer(msg.sender, level);
 
             users[msg.sender].activeX6Levels[level] = true;
-            updateX6Referrer(msg.sender, freeX6Referrer, level);
+            _updateX6Referrer(msg.sender, freeX6Referrer, level);
 
             emit Upgrade(msg.sender, freeX6Referrer, 2, level);
         }
     }
 
-    function registration(address userAddress, address referrerAddress) private {
+    // -----------------------------------------
+    // PRIVATE
+    // -----------------------------------------
+
+    function _registration(address userAddress, address referrerAddress) private {
         require(msg.value == 0.05 ether, "registration cost 0.05");
         require(!isUserExists(userAddress), "user exists");
         require(isUserExists(referrerAddress), "referrer not exists");
@@ -154,19 +178,19 @@ contract SmartMatrixForsage {
 
         address freeX3Referrer = findFreeX3Referrer(userAddress, 1);
         users[userAddress].x3Matrix[1].currentReferrer = freeX3Referrer;
-        updateX3Referrer(userAddress, freeX3Referrer, 1);
+        _updateX3Referrer(userAddress, freeX3Referrer, 1);
 
-        updateX6Referrer(userAddress, findFreeX6Referrer(userAddress, 1), 1);
+        _updateX6Referrer(userAddress, findFreeX6Referrer(userAddress, 1), 1);
 
         emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
     }
 
-    function updateX3Referrer(address userAddress, address referrerAddress, uint8 level) private {
+    function _updateX3Referrer(address userAddress, address referrerAddress, uint8 level) private {
         users[referrerAddress].x3Matrix[level].referrals.push(userAddress);
 
         if (users[referrerAddress].x3Matrix[level].referrals.length < 3) {
             emit NewUserPlace(userAddress, referrerAddress, 1, level, uint8(users[referrerAddress].x3Matrix[level].referrals.length));
-            return sendETHDividends(referrerAddress, userAddress, 1, level);
+            return _sendETHDividends(referrerAddress, userAddress, 1, level);
         }
 
         emit NewUserPlace(userAddress, referrerAddress, 1, level, 3);
@@ -186,15 +210,15 @@ contract SmartMatrixForsage {
 
             users[referrerAddress].x3Matrix[level].reinvestCount++;
             emit Reinvest(referrerAddress, freeReferrerAddress, userAddress, 1, level);
-            updateX3Referrer(referrerAddress, freeReferrerAddress, level);
+            _updateX3Referrer(referrerAddress, freeReferrerAddress, level);
         } else {
-            sendETHDividends(owner, userAddress, 1, level);
+            _sendETHDividends(owner, userAddress, 1, level);
             users[owner].x3Matrix[level].reinvestCount++;
             emit Reinvest(owner, address(0), userAddress, 1, level);
         }
     }
 
-    function updateX6Referrer(address userAddress, address referrerAddress, uint8 level) private {
+    function _updateX6Referrer(address userAddress, address referrerAddress, uint8 level) private {
         require(users[referrerAddress].activeX6Levels[level], "500. Referrer level is inactive");
 
         if (users[referrerAddress].x6Matrix[level].firstLevelReferrals.length < 2) {
@@ -205,7 +229,7 @@ contract SmartMatrixForsage {
             users[userAddress].x6Matrix[level].currentReferrer = referrerAddress;
 
             if (referrerAddress == owner) {
-                return sendETHDividends(referrerAddress, userAddress, 2, level);
+                return _sendETHDividends(referrerAddress, userAddress, 2, level);
             }
 
             address ref = users[referrerAddress].x6Matrix[level].currentReferrer;
@@ -236,7 +260,7 @@ contract SmartMatrixForsage {
                 }
             }
 
-            return updateX6ReferrerSecondLevel(userAddress, ref, level);
+            return _updateX6ReferrerSecondLevel(userAddress, ref, level);
         }
 
         users[referrerAddress].x6Matrix[level].secondLevelReferrals.push(userAddress);
@@ -247,37 +271,37 @@ contract SmartMatrixForsage {
                 (users[referrerAddress].x6Matrix[level].firstLevelReferrals[0] ==
                 users[referrerAddress].x6Matrix[level].closedPart)) {
 
-                updateX6(userAddress, referrerAddress, level, true);
-                return updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+                _updateX6(userAddress, referrerAddress, level, true);
+                return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
             } else if (users[referrerAddress].x6Matrix[level].firstLevelReferrals[0] ==
                 users[referrerAddress].x6Matrix[level].closedPart) {
-                updateX6(userAddress, referrerAddress, level, true);
-                return updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+                _updateX6(userAddress, referrerAddress, level, true);
+                return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
             } else {
-                updateX6(userAddress, referrerAddress, level, false);
-                return updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+                _updateX6(userAddress, referrerAddress, level, false);
+                return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
             }
         }
 
         if (users[referrerAddress].x6Matrix[level].firstLevelReferrals[1] == userAddress) {
-            updateX6(userAddress, referrerAddress, level, false);
-            return updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+            _updateX6(userAddress, referrerAddress, level, false);
+            return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
         } else if (users[referrerAddress].x6Matrix[level].firstLevelReferrals[0] == userAddress) {
-            updateX6(userAddress, referrerAddress, level, true);
-            return updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+            _updateX6(userAddress, referrerAddress, level, true);
+            return _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
         }
 
         if (users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.length <=
             users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[1]].x6Matrix[level].firstLevelReferrals.length) {
-            updateX6(userAddress, referrerAddress, level, false);
+            _updateX6(userAddress, referrerAddress, level, false);
         } else {
-            updateX6(userAddress, referrerAddress, level, true);
+            _updateX6(userAddress, referrerAddress, level, true);
         }
 
-        updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
+        _updateX6ReferrerSecondLevel(userAddress, referrerAddress, level);
     }
 
-    function updateX6(address userAddress, address referrerAddress, uint8 level, bool x2) private {
+    function _updateX6(address userAddress, address referrerAddress, uint8 level, bool x2) private {
         if (!x2) {
             users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.push(userAddress);
             emit NewUserPlace(userAddress, users[referrerAddress].x6Matrix[level].firstLevelReferrals[0], 2, level, uint8(users[users[referrerAddress].x6Matrix[level].firstLevelReferrals[0]].x6Matrix[level].firstLevelReferrals.length));
@@ -293,9 +317,9 @@ contract SmartMatrixForsage {
         }
     }
 
-    function updateX6ReferrerSecondLevel(address userAddress, address referrerAddress, uint8 level) private {
+    function _updateX6ReferrerSecondLevel(address userAddress, address referrerAddress, uint8 level) private {
         if (users[referrerAddress].x6Matrix[level].secondLevelReferrals.length < 4) {
-            return sendETHDividends(referrerAddress, userAddress, 2, level);
+            return _sendETHDividends(referrerAddress, userAddress, 2, level);
         }
 
         address[] memory x6 = users[users[referrerAddress].x6Matrix[level].currentReferrer].x6Matrix[level].firstLevelReferrals;
@@ -325,12 +349,60 @@ contract SmartMatrixForsage {
             address freeReferrerAddress = findFreeX6Referrer(referrerAddress, level);
 
             emit Reinvest(referrerAddress, freeReferrerAddress, userAddress, 2, level);
-            updateX6Referrer(referrerAddress, freeReferrerAddress, level);
+            _updateX6Referrer(referrerAddress, freeReferrerAddress, level);
         } else {
             emit Reinvest(owner, address(0), userAddress, 2, level);
-            sendETHDividends(owner, userAddress, 2, level);
+            _sendETHDividends(owner, userAddress, 2, level);
         }
     }
+
+    function _bytesToAddress(bytes memory bys) private pure returns (address addr) {
+        assembly {
+            addr := mload(add(bys, 20))
+        }
+    }
+
+    function _findEthReceiver(address userAddress, address _from, uint8 matrix, uint8 level) private returns(address, bool) {
+        address receiver = userAddress;
+        bool isExtraDividends;
+        if (matrix == 1) {
+            while (true) {
+                if (users[receiver].x3Matrix[level].blocked) {
+                    emit MissedEthReceive(receiver, _from, 1, level);
+                    isExtraDividends = true;
+                    receiver = users[receiver].x3Matrix[level].currentReferrer;
+                } else {
+                    return (receiver, isExtraDividends);
+                }
+            }
+        } else {
+            while (true) {
+                if (users[receiver].x6Matrix[level].blocked) {
+                    emit MissedEthReceive(receiver, _from, 2, level);
+                    isExtraDividends = true;
+                    receiver = users[receiver].x6Matrix[level].currentReferrer;
+                } else {
+                    return (receiver, isExtraDividends);
+                }
+            }
+        }
+    }
+
+    function _sendETHDividends(address userAddress, address _from, uint8 matrix, uint8 level) private {
+        (address receiver, bool isExtraDividends) = _findEthReceiver(userAddress, _from, matrix, level);
+
+        if (!address(uint160(receiver)).send(levelPrice[level])) {
+            return address(uint160(receiver)).transfer(address(this).balance);
+        }
+
+        if (isExtraDividends) {
+            emit SentExtraEthDividends(_from, receiver, matrix, level);
+        }
+    }
+
+    // -----------------------------------------
+    // GETTERS
+    // -----------------------------------------
 
     function findFreeX3Referrer(address userAddress, uint8 level) public view returns(address) {
         while (true) {
@@ -376,49 +448,5 @@ contract SmartMatrixForsage {
 
     function isUserExists(address user) public view returns (bool) {
         return (users[user].id != 0);
-    }
-
-    function findEthReceiver(address userAddress, address _from, uint8 matrix, uint8 level) private returns(address, bool) {
-        address receiver = userAddress;
-        bool isExtraDividends;
-        if (matrix == 1) {
-            while (true) {
-                if (users[receiver].x3Matrix[level].blocked) {
-                    emit MissedEthReceive(receiver, _from, 1, level);
-                    isExtraDividends = true;
-                    receiver = users[receiver].x3Matrix[level].currentReferrer;
-                } else {
-                    return (receiver, isExtraDividends);
-                }
-            }
-        } else {
-            while (true) {
-                if (users[receiver].x6Matrix[level].blocked) {
-                    emit MissedEthReceive(receiver, _from, 2, level);
-                    isExtraDividends = true;
-                    receiver = users[receiver].x6Matrix[level].currentReferrer;
-                } else {
-                    return (receiver, isExtraDividends);
-                }
-            }
-        }
-    }
-
-    function sendETHDividends(address userAddress, address _from, uint8 matrix, uint8 level) private {
-        (address receiver, bool isExtraDividends) = findEthReceiver(userAddress, _from, matrix, level);
-
-        if (!address(uint160(receiver)).send(levelPrice[level])) {
-            return address(uint160(receiver)).transfer(address(this).balance);
-        }
-
-        if (isExtraDividends) {
-            emit SentExtraEthDividends(_from, receiver, matrix, level);
-        }
-    }
-
-    function bytesToAddress(bytes memory bys) private pure returns (address addr) {
-        assembly {
-            addr := mload(add(bys, 20))
-        }
     }
 }
