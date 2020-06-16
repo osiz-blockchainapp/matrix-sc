@@ -1,7 +1,6 @@
 pragma solidity ^0.5.0;
 
 contract Voomo {
-
     address public owner;
     uint256 public lastUserId = 2;
     uint256 public autoSystemLastUserId = 1;
@@ -730,7 +729,7 @@ contract Voomo {
         return users[userAddress].activeX4Levels[level];
     }
 
-    function usersX3Matrix(address userAddress, uint8 level) external view returns (
+    function getUserX3Matrix(address userAddress, uint8 level) external view returns (
         address currentReferrer,
         address[] memory referrals,
         bool blocked,
@@ -744,7 +743,7 @@ contract Voomo {
         );
     }
 
-    function usersX4Matrix(address userAddress, uint8 level) external view returns (
+    function getUserX4Matrix(address userAddress, uint8 level) external view returns (
         address currentReferrer,
         address[] memory firstLevelReferrals,
         address[] memory secondLevelReferrals,

@@ -19,17 +19,17 @@ contract Owner {
         _;
     }
 
-    constructor (address payable o1, address payable o2) public {
-        require(o1 != address(0) && o2 != address(0), 'Owner: invalid addresses');
-        owner1 = o1;
-        owner2 = o2;
+    constructor (address payable _owner1, address payable _owner2) public {
+        require(_owner1 != address(0) && _owner2 != address(0), 'Owner: invalid addresses');
+        owner1 = _owner1;
+        owner2 = _owner2;
     }
 
     function () external payable {
         _deposited(msg.value);
     }
 
-    function deposit() external payable {
+    function deposited() external payable {
         _deposited(msg.value);
     }
 
