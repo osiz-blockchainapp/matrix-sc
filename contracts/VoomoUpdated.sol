@@ -5,6 +5,7 @@ contract Voomo {
     uint256 public lastUserId = 2;
     uint8 public constant LAST_LEVEL = 12;
     uint256 public constant registrationFee = 0.1 ether;
+    uint256 public constant X4_AUTO_DOWNLINES_LIMIT = 2;
 
     struct User {
         uint256 id;
@@ -16,6 +17,8 @@ contract Voomo {
 
         mapping(uint8 => X3) x3Manual;
         mapping(uint8 => X4) x4Manual;
+
+        mapping(uint8 => X4_AUTO) x4Auto;
     }
 
     struct X3 {
@@ -33,6 +36,11 @@ contract Voomo {
         uint256 reinvestCount;
 
         address closedPart;
+    }
+
+    struct X4_AUTO {
+        uint256 referrerID;
+        address[] directReferrals;
     }
 
     mapping(address => User) public users;
@@ -75,15 +83,16 @@ contract Voomo {
             partnersCount: uint(0)
         });
 
-        users[ownerAddress] = user;
-        idToAddress[1] = ownerAddress;
+        users[owner] = user;
+        userIds[1] = owner;
+        idToAddress[1] = owner;
+
+        users[owner].x4Auto[0] = X4_AUTO(0, new address[](0));
 
         for (uint8 i = 1; i <= LAST_LEVEL; i++) {
-            users[ownerAddress].activeX3Levels[i] = true;
-            users[ownerAddress].activeX4Levels[i] = true;
+            users[owner].activeX3Levels[i] = true;
+            users[owner].activeX4Levels[i] = true;
         }
-
-        userIds[1] = ownerAddress;
     }
 
     // -----------------------------------------
@@ -167,12 +176,19 @@ contract Voomo {
         userIds[lastUserId] = userAddress;
         lastUserId++;
 
+        uint256 referrerID = users[referrerAddress].id;
+        if (users[userIds[referrerID]].x4Auto[0].directReferrals.length >= X4_AUTO_DOWNLINES_LIMIT) {
+            referrerID = users[findFreeX4AutoReferrer(userIds[referrerID])].id;
+        }
+
+        users[userAddress].x4Auto[0] = X4_AUTO(referrerID, new address[](0));
+        users[userIds[referrerID]].x4Auto[0].directReferrals.push(userAddress);
+
         users[referrerAddress].partnersCount++;
 
         address freeX3Referrer = findFreeX3Referrer(userAddress, 1);
         users[userAddress].x3Manual[1].currentReferrer = freeX3Referrer;
         _updateX3Referrer(userAddress, freeX3Referrer, 1);
-
         _updateX4Referrer(userAddress, findFreeX4Referrer(userAddress, 1), 1);
 
         emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
@@ -434,6 +450,36 @@ contract Voomo {
         }
     }
 
+    function findFreeX4AutoReferrer(address userAddress) public view returns (address) {
+        if (users[userAddress].x4Auto[0].directReferrals.length < X4_AUTO_DOWNLINES_LIMIT) {
+            return userAddress;
+        }
+
+        address[] memory referrals = new address[](126);
+        referrals[0] = users[userAddress].x4Auto[0].directReferrals[0];
+        referrals[1] = users[userAddress].x4Auto[0].directReferrals[1];
+
+        address freeReferrer;
+        bool noFreeReferrer = true;
+
+        for (uint256 i = 0; i < 126; i++) {
+            if (users[referrals[i]].x4Auto[0].directReferrals.length == X4_AUTO_DOWNLINES_LIMIT) {
+                if (i < 62) {
+                    referrals[(i + 1) * 2] = users[referrals[i]].x4Auto[0].directReferrals[0];
+                    referrals[(i + 1) * 2 + 1] = users[referrals[i]].x4Auto[0].directReferrals[1];
+                }
+            } else {
+                noFreeReferrer = false;
+                freeReferrer = referrals[i];
+                break;
+            }
+        }
+
+        require(!noFreeReferrer, 'No Free Referrer');
+
+        return freeReferrer;
+    }
+
     function usersActiveX3Levels(address userAddress, uint8 level) public view returns (bool) {
         return users[userAddress].activeX3Levels[level];
     }
@@ -456,152 +502,11 @@ contract Voomo {
                 users[userAddress].x4Manual[level].closedPart);
     }
 
+    function getUserX4AutoReferrals(address userAddress) public view returns (address[] memory) {
+        return users[userAddress].x4Auto[0].directReferrals;
+    }
+
     function isUserExists(address user) public view returns (bool) {
         return _isUserExists(user);
-    }
-}
-
-contract SpilloverSystem {
-    address public owner;
-    uint256 public lastUserId = 2;
-    uint256 public constant REFERRER_1_LEVEL_LIMIT = 2;
-
-    struct User {
-        uint256 id;
-        mapping(uint8 => X4_AUTO) x4Auto;
-    }
-
-    struct X4_AUTO {
-        uint256 referrerID;
-        address[] directReferals;
-    }
-
-    mapping (uint256 => uint256)public LEVEL_PRICE;
-    mapping (address => User) public users;
-    mapping (uint256 => address) public userList;
-
-    event regLevelEvent(address indexed _user, address indexed _referrer, uint256 _time);
-    event prolongateLevelEvent(address indexed _user, uint256 _level, uint256 _time);
-    event getMoneyForLevelEvent(address indexed _user, address indexed _referral, uint256 _level, uint256 _time);
-    event lostMoneyForLevelEvent(address indexed _user, address indexed _referral, uint256 _level, uint256 _time);
-
-    // -----------------------------------------
-    // CONSTRUCTOR
-    // -----------------------------------------
-
-    constructor() public {
-        owner = msg.sender;
-
-        LEVEL_PRICE[1] = 0.05 ether;
-        LEVEL_PRICE[2] = 0.1 ether;
-        LEVEL_PRICE[3] = 0.2 ether;
-        LEVEL_PRICE[4] = 0.4 ether;
-        LEVEL_PRICE[5] = 0.8 ether;
-        LEVEL_PRICE[6] = 1.6 ether;
-        LEVEL_PRICE[7] = 3.2 ether;
-        LEVEL_PRICE[8] = 6.4 ether;
-        LEVEL_PRICE[9] = 12.8 ether;
-        LEVEL_PRICE[10] = 25.6 ether;
-        LEVEL_PRICE[11] = 51.2 ether;
-        LEVEL_PRICE[12] = 102.4 ether;
-
-        User memory user;
-
-        user = User({
-            id: 1
-        });
-
-        users[owner] = user;
-        userList[1] = owner;
-
-        users[owner].x4Auto[0] = X4_AUTO(0, new address[](0));
-    }
-
-    // -----------------------------------------
-    // SETTERS
-    // -----------------------------------------
-
-    function regUser(uint256 _referrerID) public payable {
-        require(!_isUserExists(msg.sender), 'User exist');
-        require(_referrerID > 0 && _referrerID <= lastUserId, 'Incorrect referrer Id');
-        require(msg.value == LEVEL_PRICE[1], 'Incorrect Value');
-
-        if (users[userList[_referrerID]].x4Auto[0].directReferals.length >= REFERRER_1_LEVEL_LIMIT) {
-            _referrerID = users[findFreeReferrer(userList[_referrerID])].id;
-        }
-
-        User memory user;
-        lastUserId++;
-
-        user = User({
-            id: lastUserId
-        });
-
-        users[msg.sender] = user;
-        userList[lastUserId] = msg.sender;
-
-        users[msg.sender].x4Auto[0] = X4_AUTO(_referrerID, new address[](0));
-
-        users[userList[_referrerID]].x4Auto[0].directReferals.push(msg.sender);
-
-        _payForLevel(1, msg.sender);
-
-        emit regLevelEvent(msg.sender, userList[_referrerID], block.timestamp);
-    }
-
-    // -----------------------------------------
-    // GETTERS
-    // -----------------------------------------
-
-    function _payForLevel(uint256 _level, address _user) private {
-
-    }
-
-    function _isUserExists(address user) private view returns (bool) {
-        return (users[user].id != 0);
-    }
-
-    // -----------------------------------------
-    // GETTERS
-    // -----------------------------------------
-
-    function findFreeReferrer(address _user) public view returns (address) {
-        if (users[_user].x4Auto[0].directReferals.length < REFERRER_1_LEVEL_LIMIT) {
-            return _user;
-        }
-
-        address[] memory referrals = new address[](126);
-        referrals[0] = users[_user].x4Auto[0].directReferals[0];
-        referrals[1] = users[_user].x4Auto[0].directReferals[1];
-
-        address freeReferrer;
-        bool noFreeReferrer = true;
-
-        for (uint256 i = 0; i < 126; i++) {
-            if (users[referrals[i]].x4Auto[0].directReferals.length == REFERRER_1_LEVEL_LIMIT) {
-                if (i < 62) {
-                    referrals[(i + 1) * 2] = users[referrals[i]].x4Auto[0].directReferals[0];
-                    referrals[(i + 1) * 2 + 1] = users[referrals[i]].x4Auto[0].directReferals[1];
-                }
-            } else {
-                noFreeReferrer = false;
-                freeReferrer = referrals[i];
-                break;
-            }
-        }
-
-        require(!noFreeReferrer, 'No Free Referrer');
-
-        return freeReferrer;
-    }
-
-    function viewUserReferral(address _user) public view returns (address[] memory) {
-        return users[_user].x4Auto[0].directReferals;
-    }
-
-    function bytesToAddress(bytes memory bys) private pure returns (address addr) {
-        assembly {
-            addr := mload(add(bys, 20))
-        }
     }
 }
