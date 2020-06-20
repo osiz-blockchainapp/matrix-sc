@@ -102,7 +102,7 @@ contract Voomo {
     // SETTERS
     // -----------------------------------------
 
-    function registrationExt(address referrerAddress) external payable {
+    function registration(address referrerAddress) external payable {
         _registration(msg.sender, referrerAddress);
     }
 
@@ -468,8 +468,12 @@ contract SpilloverSystem {
 
     struct User {
         uint256 id;
+        mapping(uint8 => X4_AUTO) x4Auto;
+    }
+
+    struct X4_AUTO {
         uint256 referrerID;
-        address[] referral;
+        address[] directReferals;
     }
 
     mapping (uint256 => uint256)public LEVEL_PRICE;
@@ -504,13 +508,13 @@ contract SpilloverSystem {
         User memory user;
 
         user = User({
-            id: 1,
-            referrerID: 0,
-            referral: new address[](0)
+            id: 1
         });
 
         users[owner] = user;
         userList[1] = owner;
+
+        users[owner].x4Auto[0] = X4_AUTO(0, new address[](0));
     }
 
     // -----------------------------------------
@@ -522,7 +526,7 @@ contract SpilloverSystem {
         require(_referrerID > 0 && _referrerID <= lastUserId, 'Incorrect referrer Id');
         require(msg.value == LEVEL_PRICE[1], 'Incorrect Value');
 
-        if (users[userList[_referrerID]].referral.length >= REFERRER_1_LEVEL_LIMIT) {
+        if (users[userList[_referrerID]].x4Auto[0].directReferals.length >= REFERRER_1_LEVEL_LIMIT) {
             _referrerID = users[findFreeReferrer(userList[_referrerID])].id;
         }
 
@@ -530,15 +534,15 @@ contract SpilloverSystem {
         lastUserId++;
 
         user = User({
-            id: lastUserId,
-            referrerID: _referrerID,
-            referral: new address[](0)
+            id: lastUserId
         });
 
         users[msg.sender] = user;
         userList[lastUserId] = msg.sender;
 
-        users[userList[_referrerID]].referral.push(msg.sender);
+        users[msg.sender].x4Auto[0] = X4_AUTO(_referrerID, new address[](0));
+
+        users[userList[_referrerID]].x4Auto[0].directReferals.push(msg.sender);
 
         _payForLevel(1, msg.sender);
 
@@ -562,22 +566,22 @@ contract SpilloverSystem {
     // -----------------------------------------
 
     function findFreeReferrer(address _user) public view returns (address) {
-        if (users[_user].referral.length < REFERRER_1_LEVEL_LIMIT) {
+        if (users[_user].x4Auto[0].directReferals.length < REFERRER_1_LEVEL_LIMIT) {
             return _user;
         }
 
         address[] memory referrals = new address[](126);
-        referrals[0] = users[_user].referral[0];
-        referrals[1] = users[_user].referral[1];
+        referrals[0] = users[_user].x4Auto[0].directReferals[0];
+        referrals[1] = users[_user].x4Auto[0].directReferals[1];
 
         address freeReferrer;
         bool noFreeReferrer = true;
 
         for (uint256 i = 0; i < 126; i++) {
-            if (users[referrals[i]].referral.length == REFERRER_1_LEVEL_LIMIT) {
+            if (users[referrals[i]].x4Auto[0].directReferals.length == REFERRER_1_LEVEL_LIMIT) {
                 if (i < 62) {
-                    referrals[(i + 1) * 2] = users[referrals[i]].referral[0];
-                    referrals[(i + 1) * 2 + 1] = users[referrals[i]].referral[1];
+                    referrals[(i + 1) * 2] = users[referrals[i]].x4Auto[0].directReferals[0];
+                    referrals[(i + 1) * 2 + 1] = users[referrals[i]].x4Auto[0].directReferals[1];
                 }
             } else {
                 noFreeReferrer = false;
@@ -592,7 +596,7 @@ contract SpilloverSystem {
     }
 
     function viewUserReferral(address _user) public view returns (address[] memory) {
-        return users[_user].referral;
+        return users[_user].x4Auto[0].directReferals;
     }
 
     function bytesToAddress(bytes memory bys) private pure returns (address addr) {
