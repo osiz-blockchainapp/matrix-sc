@@ -580,7 +580,7 @@ contract SpilloverSystem {
 
         _payForLevel(1, msg.sender);
 
-        emit regLevelEvent(msg.sender, userList[_referrerID], now);
+        emit regLevelEvent(msg.sender, userList[_referrerID], block.timestamp);
     }
 
     function buyLevel(uint256 _level) public payable {
@@ -595,7 +595,7 @@ contract SpilloverSystem {
 
         _payForLevel(_level, msg.sender);
 
-        emit buyLevelEvent(msg.sender, _level, now);
+        emit buyLevelEvent(msg.sender, _level, block.timestamp);
     }
 
     // -----------------------------------------
