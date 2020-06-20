@@ -14,8 +14,8 @@ contract Voomo {
         mapping(uint8 => bool) activeX3Levels;
         mapping(uint8 => bool) activeX4Levels;
 
-        mapping(uint8 => X3) x3Matrix;
-        mapping(uint8 => X4) x4Matrix;
+        mapping(uint8 => X3) x3Manual;
+        mapping(uint8 => X4) x4Manual;
     }
 
     struct X3 {
@@ -115,12 +115,12 @@ contract Voomo {
         if (matrix == 1) {
             require(!users[msg.sender].activeX3Levels[level], "level already activated");
 
-            if (users[msg.sender].x3Matrix[level-1].blocked) {
-                users[msg.sender].x3Matrix[level-1].blocked = false;
+            if (users[msg.sender].x3Manual[level-1].blocked) {
+                users[msg.sender].x3Manual[level-1].blocked = false;
             }
 
             address freeX3Referrer = findFreeX3Referrer(msg.sender, level);
-            users[msg.sender].x3Matrix[level].currentReferrer = freeX3Referrer;
+            users[msg.sender].x3Manual[level].currentReferrer = freeX3Referrer;
             users[msg.sender].activeX3Levels[level] = true;
             _updateX3Referrer(msg.sender, freeX3Referrer, level);
 
@@ -129,8 +129,8 @@ contract Voomo {
         } else {
             require(!users[msg.sender].activeX4Levels[level], "level already activated");
 
-            if (users[msg.sender].x4Matrix[level-1].blocked) {
-                users[msg.sender].x4Matrix[level-1].blocked = false;
+            if (users[msg.sender].x4Manual[level-1].blocked) {
+                users[msg.sender].x4Manual[level-1].blocked = false;
             }
 
             address freeX4Referrer = findFreeX4Referrer(msg.sender, level);
@@ -170,7 +170,7 @@ contract Voomo {
         users[referrerAddress].partnersCount++;
 
         address freeX3Referrer = findFreeX3Referrer(userAddress, 1);
-        users[userAddress].x3Matrix[1].currentReferrer = freeX3Referrer;
+        users[userAddress].x3Manual[1].currentReferrer = freeX3Referrer;
         _updateX3Referrer(userAddress, freeX3Referrer, 1);
 
         _updateX4Referrer(userAddress, findFreeX4Referrer(userAddress, 1), 1);
@@ -192,34 +192,34 @@ contract Voomo {
     }
 
     function _updateX3Referrer(address userAddress, address referrerAddress, uint8 level) private {
-        users[referrerAddress].x3Matrix[level].referrals.push(userAddress);
+        users[referrerAddress].x3Manual[level].referrals.push(userAddress);
 
-        if (users[referrerAddress].x3Matrix[level].referrals.length < 3) {
-            emit NewUserPlace(userAddress, referrerAddress, 1, level, uint8(users[referrerAddress].x3Matrix[level].referrals.length));
+        if (users[referrerAddress].x3Manual[level].referrals.length < 3) {
+            emit NewUserPlace(userAddress, referrerAddress, 1, level, uint8(users[referrerAddress].x3Manual[level].referrals.length));
             return _sendETHDividends(referrerAddress, userAddress, 1, level);
         }
 
         emit NewUserPlace(userAddress, referrerAddress, 1, level, 3);
         //close matrix
-        users[referrerAddress].x3Matrix[level].referrals = new address[](0);
+        users[referrerAddress].x3Manual[level].referrals = new address[](0);
         if (!users[referrerAddress].activeX3Levels[level+1] && level != LAST_LEVEL) {
-            users[referrerAddress].x3Matrix[level].blocked = true;
+            users[referrerAddress].x3Manual[level].blocked = true;
         }
 
         //create new one by recursion
         if (referrerAddress != owner) {
             //check referrer active level
             address freeReferrerAddress = findFreeX3Referrer(referrerAddress, level);
-            if (users[referrerAddress].x3Matrix[level].currentReferrer != freeReferrerAddress) {
-                users[referrerAddress].x3Matrix[level].currentReferrer = freeReferrerAddress;
+            if (users[referrerAddress].x3Manual[level].currentReferrer != freeReferrerAddress) {
+                users[referrerAddress].x3Manual[level].currentReferrer = freeReferrerAddress;
             }
 
-            users[referrerAddress].x3Matrix[level].reinvestCount++;
+            users[referrerAddress].x3Manual[level].reinvestCount++;
             emit Reinvest(referrerAddress, freeReferrerAddress, userAddress, 1, level);
             _updateX3Referrer(referrerAddress, freeReferrerAddress, level);
         } else {
             _sendETHDividends(owner, userAddress, 1, level);
-            users[owner].x3Matrix[level].reinvestCount++;
+            users[owner].x3Manual[level].reinvestCount++;
             emit Reinvest(owner, address(0), userAddress, 1, level);
         }
     }
@@ -227,39 +227,39 @@ contract Voomo {
     function _updateX4Referrer(address userAddress, address referrerAddress, uint8 level) private {
         require(users[referrerAddress].activeX4Levels[level], "500. Referrer level is inactive");
 
-        if (users[referrerAddress].x4Matrix[level].firstLevelReferrals.length < 2) {
-            users[referrerAddress].x4Matrix[level].firstLevelReferrals.push(userAddress);
-            emit NewUserPlace(userAddress, referrerAddress, 2, level, uint8(users[referrerAddress].x4Matrix[level].firstLevelReferrals.length));
+        if (users[referrerAddress].x4Manual[level].firstLevelReferrals.length < 2) {
+            users[referrerAddress].x4Manual[level].firstLevelReferrals.push(userAddress);
+            emit NewUserPlace(userAddress, referrerAddress, 2, level, uint8(users[referrerAddress].x4Manual[level].firstLevelReferrals.length));
 
             //set current level
-            users[userAddress].x4Matrix[level].currentReferrer = referrerAddress;
+            users[userAddress].x4Manual[level].currentReferrer = referrerAddress;
 
             if (referrerAddress == owner) {
                 return _sendETHDividends(referrerAddress, userAddress, 2, level);
             }
 
-            address ref = users[referrerAddress].x4Matrix[level].currentReferrer;
-            users[ref].x4Matrix[level].secondLevelReferrals.push(userAddress);
+            address ref = users[referrerAddress].x4Manual[level].currentReferrer;
+            users[ref].x4Manual[level].secondLevelReferrals.push(userAddress);
 
-            uint256 len = users[ref].x4Matrix[level].firstLevelReferrals.length;
+            uint256 len = users[ref].x4Manual[level].firstLevelReferrals.length;
 
             if ((len == 2) &&
-                (users[ref].x4Matrix[level].firstLevelReferrals[0] == referrerAddress) &&
-                (users[ref].x4Matrix[level].firstLevelReferrals[1] == referrerAddress)) {
-                if (users[referrerAddress].x4Matrix[level].firstLevelReferrals.length == 1) {
+                (users[ref].x4Manual[level].firstLevelReferrals[0] == referrerAddress) &&
+                (users[ref].x4Manual[level].firstLevelReferrals[1] == referrerAddress)) {
+                if (users[referrerAddress].x4Manual[level].firstLevelReferrals.length == 1) {
                     emit NewUserPlace(userAddress, ref, 2, level, 5);
                 } else {
                     emit NewUserPlace(userAddress, ref, 2, level, 6);
                 }
             }  else if ((len == 1 || len == 2) &&
-                    users[ref].x4Matrix[level].firstLevelReferrals[0] == referrerAddress) {
-                if (users[referrerAddress].x4Matrix[level].firstLevelReferrals.length == 1) {
+                    users[ref].x4Manual[level].firstLevelReferrals[0] == referrerAddress) {
+                if (users[referrerAddress].x4Manual[level].firstLevelReferrals.length == 1) {
                     emit NewUserPlace(userAddress, ref, 2, level, 3);
                 } else {
                     emit NewUserPlace(userAddress, ref, 2, level, 4);
                 }
-            } else if (len == 2 && users[ref].x4Matrix[level].firstLevelReferrals[1] == referrerAddress) {
-                if (users[referrerAddress].x4Matrix[level].firstLevelReferrals.length == 1) {
+            } else if (len == 2 && users[ref].x4Manual[level].firstLevelReferrals[1] == referrerAddress) {
+                if (users[referrerAddress].x4Manual[level].firstLevelReferrals.length == 1) {
                     emit NewUserPlace(userAddress, ref, 2, level, 5);
                 } else {
                     emit NewUserPlace(userAddress, ref, 2, level, 6);
@@ -269,18 +269,18 @@ contract Voomo {
             return _updateX4ReferrerSecondLevel(userAddress, ref, level);
         }
 
-        users[referrerAddress].x4Matrix[level].secondLevelReferrals.push(userAddress);
+        users[referrerAddress].x4Manual[level].secondLevelReferrals.push(userAddress);
 
-        if (users[referrerAddress].x4Matrix[level].closedPart != address(0)) {
-            if ((users[referrerAddress].x4Matrix[level].firstLevelReferrals[0] ==
-                users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]) &&
-                (users[referrerAddress].x4Matrix[level].firstLevelReferrals[0] ==
-                users[referrerAddress].x4Matrix[level].closedPart)) {
+        if (users[referrerAddress].x4Manual[level].closedPart != address(0)) {
+            if ((users[referrerAddress].x4Manual[level].firstLevelReferrals[0] ==
+                users[referrerAddress].x4Manual[level].firstLevelReferrals[1]) &&
+                (users[referrerAddress].x4Manual[level].firstLevelReferrals[0] ==
+                users[referrerAddress].x4Manual[level].closedPart)) {
 
                 _updateX4(userAddress, referrerAddress, level, true);
                 return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
-            } else if (users[referrerAddress].x4Matrix[level].firstLevelReferrals[0] ==
-                users[referrerAddress].x4Matrix[level].closedPart) {
+            } else if (users[referrerAddress].x4Manual[level].firstLevelReferrals[0] ==
+                users[referrerAddress].x4Manual[level].closedPart) {
                 _updateX4(userAddress, referrerAddress, level, true);
                 return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
             } else {
@@ -289,16 +289,16 @@ contract Voomo {
             }
         }
 
-        if (users[referrerAddress].x4Matrix[level].firstLevelReferrals[1] == userAddress) {
+        if (users[referrerAddress].x4Manual[level].firstLevelReferrals[1] == userAddress) {
             _updateX4(userAddress, referrerAddress, level, false);
             return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
-        } else if (users[referrerAddress].x4Matrix[level].firstLevelReferrals[0] == userAddress) {
+        } else if (users[referrerAddress].x4Manual[level].firstLevelReferrals[0] == userAddress) {
             _updateX4(userAddress, referrerAddress, level, true);
             return _updateX4ReferrerSecondLevel(userAddress, referrerAddress, level);
         }
 
-        if (users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[0]].x4Matrix[level].firstLevelReferrals.length <=
-            users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]].x4Matrix[level].firstLevelReferrals.length) {
+        if (users[users[referrerAddress].x4Manual[level].firstLevelReferrals[0]].x4Manual[level].firstLevelReferrals.length <=
+            users[users[referrerAddress].x4Manual[level].firstLevelReferrals[1]].x4Manual[level].firstLevelReferrals.length) {
             _updateX4(userAddress, referrerAddress, level, false);
         } else {
             _updateX4(userAddress, referrerAddress, level, true);
@@ -309,47 +309,47 @@ contract Voomo {
 
     function _updateX4(address userAddress, address referrerAddress, uint8 level, bool x2) private {
         if (!x2) {
-            users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[0]].x4Matrix[level].firstLevelReferrals.push(userAddress);
-            emit NewUserPlace(userAddress, users[referrerAddress].x4Matrix[level].firstLevelReferrals[0], 2, level, uint8(users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[0]].x4Matrix[level].firstLevelReferrals.length));
-            emit NewUserPlace(userAddress, referrerAddress, 2, level, 2 + uint8(users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[0]].x4Matrix[level].firstLevelReferrals.length));
+            users[users[referrerAddress].x4Manual[level].firstLevelReferrals[0]].x4Manual[level].firstLevelReferrals.push(userAddress);
+            emit NewUserPlace(userAddress, users[referrerAddress].x4Manual[level].firstLevelReferrals[0], 2, level, uint8(users[users[referrerAddress].x4Manual[level].firstLevelReferrals[0]].x4Manual[level].firstLevelReferrals.length));
+            emit NewUserPlace(userAddress, referrerAddress, 2, level, 2 + uint8(users[users[referrerAddress].x4Manual[level].firstLevelReferrals[0]].x4Manual[level].firstLevelReferrals.length));
             //set current level
-            users[userAddress].x4Matrix[level].currentReferrer = users[referrerAddress].x4Matrix[level].firstLevelReferrals[0];
+            users[userAddress].x4Manual[level].currentReferrer = users[referrerAddress].x4Manual[level].firstLevelReferrals[0];
         } else {
-            users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]].x4Matrix[level].firstLevelReferrals.push(userAddress);
-            emit NewUserPlace(userAddress, users[referrerAddress].x4Matrix[level].firstLevelReferrals[1], 2, level, uint8(users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]].x4Matrix[level].firstLevelReferrals.length));
-            emit NewUserPlace(userAddress, referrerAddress, 2, level, 4 + uint8(users[users[referrerAddress].x4Matrix[level].firstLevelReferrals[1]].x4Matrix[level].firstLevelReferrals.length));
+            users[users[referrerAddress].x4Manual[level].firstLevelReferrals[1]].x4Manual[level].firstLevelReferrals.push(userAddress);
+            emit NewUserPlace(userAddress, users[referrerAddress].x4Manual[level].firstLevelReferrals[1], 2, level, uint8(users[users[referrerAddress].x4Manual[level].firstLevelReferrals[1]].x4Manual[level].firstLevelReferrals.length));
+            emit NewUserPlace(userAddress, referrerAddress, 2, level, 4 + uint8(users[users[referrerAddress].x4Manual[level].firstLevelReferrals[1]].x4Manual[level].firstLevelReferrals.length));
             //set current level
-            users[userAddress].x4Matrix[level].currentReferrer = users[referrerAddress].x4Matrix[level].firstLevelReferrals[1];
+            users[userAddress].x4Manual[level].currentReferrer = users[referrerAddress].x4Manual[level].firstLevelReferrals[1];
         }
     }
 
     function _updateX4ReferrerSecondLevel(address userAddress, address referrerAddress, uint8 level) private {
-        if (users[referrerAddress].x4Matrix[level].secondLevelReferrals.length < 4) {
+        if (users[referrerAddress].x4Manual[level].secondLevelReferrals.length < 4) {
             return _sendETHDividends(referrerAddress, userAddress, 2, level);
         }
 
-        address[] memory x4 = users[users[referrerAddress].x4Matrix[level].currentReferrer].x4Matrix[level].firstLevelReferrals;
+        address[] memory x4 = users[users[referrerAddress].x4Manual[level].currentReferrer].x4Manual[level].firstLevelReferrals;
 
         if (x4.length == 2) {
             if (x4[0] == referrerAddress ||
                 x4[1] == referrerAddress) {
-                users[users[referrerAddress].x4Matrix[level].currentReferrer].x4Matrix[level].closedPart = referrerAddress;
+                users[users[referrerAddress].x4Manual[level].currentReferrer].x4Manual[level].closedPart = referrerAddress;
             } else if (x4.length == 1) {
                 if (x4[0] == referrerAddress) {
-                    users[users[referrerAddress].x4Matrix[level].currentReferrer].x4Matrix[level].closedPart = referrerAddress;
+                    users[users[referrerAddress].x4Manual[level].currentReferrer].x4Manual[level].closedPart = referrerAddress;
                 }
             }
         }
 
-        users[referrerAddress].x4Matrix[level].firstLevelReferrals = new address[](0);
-        users[referrerAddress].x4Matrix[level].secondLevelReferrals = new address[](0);
-        users[referrerAddress].x4Matrix[level].closedPart = address(0);
+        users[referrerAddress].x4Manual[level].firstLevelReferrals = new address[](0);
+        users[referrerAddress].x4Manual[level].secondLevelReferrals = new address[](0);
+        users[referrerAddress].x4Manual[level].closedPart = address(0);
 
         if (!users[referrerAddress].activeX4Levels[level+1] && level != LAST_LEVEL) {
-            users[referrerAddress].x4Matrix[level].blocked = true;
+            users[referrerAddress].x4Manual[level].blocked = true;
         }
 
-        users[referrerAddress].x4Matrix[level].reinvestCount++;
+        users[referrerAddress].x4Manual[level].reinvestCount++;
 
         if (referrerAddress != owner) {
             address freeReferrerAddress = findFreeX4Referrer(referrerAddress, level);
@@ -373,20 +373,20 @@ contract Voomo {
         bool isExtraDividends;
         if (matrix == 1) {
             while (true) {
-                if (users[receiver].x3Matrix[level].blocked) {
+                if (users[receiver].x3Manual[level].blocked) {
                     emit MissedEthReceive(receiver, _from, 1, level);
                     isExtraDividends = true;
-                    receiver = users[receiver].x3Matrix[level].currentReferrer;
+                    receiver = users[receiver].x3Manual[level].currentReferrer;
                 } else {
                     return (receiver, isExtraDividends);
                 }
             }
         } else {
             while (true) {
-                if (users[receiver].x4Matrix[level].blocked) {
+                if (users[receiver].x4Manual[level].blocked) {
                     emit MissedEthReceive(receiver, _from, 2, level);
                     isExtraDividends = true;
-                    receiver = users[receiver].x4Matrix[level].currentReferrer;
+                    receiver = users[receiver].x4Manual[level].currentReferrer;
                 } else {
                     return (receiver, isExtraDividends);
                 }
@@ -442,18 +442,18 @@ contract Voomo {
         return users[userAddress].activeX4Levels[level];
     }
 
-    function usersX3Matrix(address userAddress, uint8 level) public view returns (address, address[] memory, bool) {
-        return (users[userAddress].x3Matrix[level].currentReferrer,
-                users[userAddress].x3Matrix[level].referrals,
-                users[userAddress].x3Matrix[level].blocked);
+    function usersX3Manual(address userAddress, uint8 level) public view returns (address, address[] memory, bool) {
+        return (users[userAddress].x3Manual[level].currentReferrer,
+                users[userAddress].x3Manual[level].referrals,
+                users[userAddress].x3Manual[level].blocked);
     }
 
-    function usersX4Matrix(address userAddress, uint8 level) public view returns (address, address[] memory, address[] memory, bool, address) {
-        return (users[userAddress].x4Matrix[level].currentReferrer,
-                users[userAddress].x4Matrix[level].firstLevelReferrals,
-                users[userAddress].x4Matrix[level].secondLevelReferrals,
-                users[userAddress].x4Matrix[level].blocked,
-                users[userAddress].x4Matrix[level].closedPart);
+    function usersX4Manual(address userAddress, uint8 level) public view returns (address, address[] memory, address[] memory, bool, address) {
+        return (users[userAddress].x4Manual[level].currentReferrer,
+                users[userAddress].x4Manual[level].firstLevelReferrals,
+                users[userAddress].x4Manual[level].secondLevelReferrals,
+                users[userAddress].x4Manual[level].blocked,
+                users[userAddress].x4Manual[level].closedPart);
     }
 
     function isUserExists(address user) public view returns (bool) {
