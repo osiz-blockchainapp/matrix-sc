@@ -514,41 +514,6 @@ contract SpilloverSystem {
     }
 
     // -----------------------------------------
-    // FALLBACK
-    // -----------------------------------------
-
-    function () external payable {
-        uint256 level;
-
-        if (msg.value == LEVEL_PRICE[1]) level = 1;
-        else if (msg.value == LEVEL_PRICE[2]) level = 2;
-        else if (msg.value == LEVEL_PRICE[3]) level = 3;
-        else if (msg.value == LEVEL_PRICE[4]) level = 4;
-        else if (msg.value == LEVEL_PRICE[5]) level = 5;
-        else if (msg.value == LEVEL_PRICE[6]) level = 6;
-        else if (msg.value == LEVEL_PRICE[7]) level = 7;
-        else if (msg.value == LEVEL_PRICE[8]) level = 8;
-        else if (msg.value == LEVEL_PRICE[9]) level = 9;
-        else if (msg.value == LEVEL_PRICE[10]) level = 10;
-        else revert('Incorrect Value send');
-
-        if (!_isUserExists(msg.sender)) {
-            uint256 refId = 0;
-            address referrer = bytesToAddress(msg.data);
-
-            if (_isUserExists(referrer)) {
-                refId = users[referrer].id;
-            } else {
-                revert('Incorrect referrer');
-            }
-
-            regUser(refId);
-        } else {
-            revert('Please buy first level for 0.03 ETH');
-        }
-    }
-
-    // -----------------------------------------
     // SETTERS
     // -----------------------------------------
 
