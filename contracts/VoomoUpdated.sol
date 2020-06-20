@@ -107,7 +107,7 @@ contract Voomo {
     }
 
     function buyNewLevel(uint8 matrix, uint8 level) external payable {
-        require(isUserExists(msg.sender), "user is not exists. Register first.");
+        require(_isUserExists(msg.sender), "user is not exists. Register first.");
         require(matrix == 1 || matrix == 2, "invalid matrix");
         require(msg.value == levelPrice[level], "invalid price");
         require(level > 1 && level <= LAST_LEVEL, "invalid level");
@@ -188,7 +188,7 @@ contract Voomo {
             size := extcodesize(userAddress)
         }
 
-        require(size == 0, "_registrationValidation: cannot be a contract");
+        require(size == 0, "_registrationValidation: user address cannot be a contract");
     }
 
     function _updateX3Referrer(address userAddress, address referrerAddress, uint8 level) private {
@@ -406,6 +406,10 @@ contract Voomo {
         }
     }
 
+    function _isUserExists(address user) private view returns (bool) {
+        return (users[user].id != 0);
+    }
+
     // -----------------------------------------
     // GETTERS
     // -----------------------------------------
@@ -453,24 +457,23 @@ contract Voomo {
     }
 
     function isUserExists(address user) public view returns (bool) {
-        return (users[user].id != 0);
+        return _isUserExists(user);
     }
 }
 
 contract SpilloverSystem {
-    address public ownerWallet;
-    uint256 public currUserID = 0;
-    uint256 public REFERRER_1_LEVEL_LIMIT = 2;
+    address public owner;
+    uint256 public lastUserId = 2;
+    uint256 public constant REFERRER_1_LEVEL_LIMIT = 2;
 
-    struct UserStruct {
-        bool isExist;
+    struct User {
         uint256 id;
         uint256 referrerID;
         address[] referral;
     }
 
     mapping (uint256 => uint256)public LEVEL_PRICE;
-    mapping (address => UserStruct) public users;
+    mapping (address => User) public users;
     mapping (uint256 => address) public userList;
 
     event regLevelEvent(address indexed _user, address indexed _referrer, uint256 _time);
@@ -484,7 +487,7 @@ contract SpilloverSystem {
     // -----------------------------------------
 
     constructor() public {
-        ownerWallet = msg.sender;
+        owner = msg.sender;
 
         LEVEL_PRICE[1] = 0.05 ether;
         LEVEL_PRICE[2] = 0.1 ether;
@@ -499,18 +502,16 @@ contract SpilloverSystem {
         LEVEL_PRICE[11] = 51.2 ether;
         LEVEL_PRICE[12] = 102.4 ether;
 
-        UserStruct memory userStruct;
-        currUserID++;
+        User memory user;
 
-        userStruct = UserStruct({
-            isExist: true,
-            id: currUserID,
+        user = User({
+            id: 1,
             referrerID: 0,
             referral: new address[](0)
         });
 
-        users[ownerWallet] = userStruct;
-        userList[currUserID] = ownerWallet;
+        users[owner] = user;
+        userList[1] = owner;
     }
 
     // -----------------------------------------
@@ -532,14 +533,17 @@ contract SpilloverSystem {
         else if (msg.value == LEVEL_PRICE[10]) level = 10;
         else revert('Incorrect Value send');
 
-        if (users[msg.sender].isExist) {
+        if (_isUserExists(msg.sender)) {
             buyLevel(level);
         } else if (level == 1) {
             uint256 refId = 0;
             address referrer = bytesToAddress(msg.data);
 
-            if (users[referrer].isExist) refId = users[referrer].id;
-            else revert('Incorrect referrer');
+            if (_isUserExists(referrer)) {
+                refId = users[referrer].id;
+            } else {
+                revert('Incorrect referrer');
+            }
 
             regUser(refId);
         } else {
@@ -552,26 +556,25 @@ contract SpilloverSystem {
     // -----------------------------------------
 
     function regUser(uint256 _referrerID) public payable {
-        require(!users[msg.sender].isExist, 'User exist');
-        require(_referrerID > 0 && _referrerID <= currUserID, 'Incorrect referrer Id');
+        require(!_isUserExists(msg.sender), 'User exist');
+        require(_referrerID > 0 && _referrerID <= lastUserId, 'Incorrect referrer Id');
         require(msg.value == LEVEL_PRICE[1], 'Incorrect Value');
 
         if (users[userList[_referrerID]].referral.length >= REFERRER_1_LEVEL_LIMIT) {
             _referrerID = users[findFreeReferrer(userList[_referrerID])].id;
         }
 
-        UserStruct memory userStruct;
-        currUserID++;
+        User memory user;
+        lastUserId++;
 
-        userStruct = UserStruct({
-            isExist: true,
-            id: currUserID,
+        user = User({
+            id: lastUserId,
             referrerID: _referrerID,
             referral: new address[](0)
         });
 
-        users[msg.sender] = userStruct;
-        userList[currUserID] = msg.sender;
+        users[msg.sender] = user;
+        userList[lastUserId] = msg.sender;
 
         users[userList[_referrerID]].referral.push(msg.sender);
 
@@ -581,7 +584,7 @@ contract SpilloverSystem {
     }
 
     function buyLevel(uint256 _level) public payable {
-        require(users[msg.sender].isExist, 'User not exist');
+        require(_isUserExists(msg.sender), 'User exist');
         require(_level > 0 && _level <= 10, 'Incorrect level');
 
         if (_level == 1) {
@@ -601,6 +604,10 @@ contract SpilloverSystem {
 
     function _payForLevel(uint256 _level, address _user) private {
 
+    }
+
+    function _isUserExists(address user) private view returns (bool) {
+        return (users[user].id != 0);
     }
 
     // -----------------------------------------
