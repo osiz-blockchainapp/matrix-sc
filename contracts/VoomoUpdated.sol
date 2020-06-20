@@ -477,7 +477,6 @@ contract SpilloverSystem {
     mapping (uint256 => address) public userList;
 
     event regLevelEvent(address indexed _user, address indexed _referrer, uint256 _time);
-    event buyLevelEvent(address indexed _user, uint256 _level, uint256 _time);
     event prolongateLevelEvent(address indexed _user, uint256 _level, uint256 _time);
     event getMoneyForLevelEvent(address indexed _user, address indexed _referral, uint256 _level, uint256 _time);
     event lostMoneyForLevelEvent(address indexed _user, address indexed _referral, uint256 _level, uint256 _time);
@@ -533,9 +532,7 @@ contract SpilloverSystem {
         else if (msg.value == LEVEL_PRICE[10]) level = 10;
         else revert('Incorrect Value send');
 
-        if (_isUserExists(msg.sender)) {
-            buyLevel(level);
-        } else if (level == 1) {
+        if (!_isUserExists(msg.sender)) {
             uint256 refId = 0;
             address referrer = bytesToAddress(msg.data);
 
@@ -581,21 +578,6 @@ contract SpilloverSystem {
         _payForLevel(1, msg.sender);
 
         emit regLevelEvent(msg.sender, userList[_referrerID], block.timestamp);
-    }
-
-    function buyLevel(uint256 _level) public payable {
-        require(_isUserExists(msg.sender), 'User exist');
-        require(_level > 0 && _level <= 10, 'Incorrect level');
-
-        if (_level == 1) {
-            require(msg.value == LEVEL_PRICE[1], 'Incorrect Value');
-        } else {
-            require(msg.value == LEVEL_PRICE[_level], 'Incorrect Value');
-        }
-
-        _payForLevel(_level, msg.sender);
-
-        emit buyLevelEvent(msg.sender, _level, block.timestamp);
     }
 
     // -----------------------------------------
