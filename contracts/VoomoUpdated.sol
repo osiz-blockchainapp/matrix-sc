@@ -4,6 +4,7 @@ contract Voomo {
     address public owner;
     uint256 public lastUserId = 2;
     uint8 public constant LAST_LEVEL = 12;
+    uint256 public constant registrationFee = 0.1 ether;
 
     struct User {
         uint256 id;
@@ -146,15 +147,7 @@ contract Voomo {
     // -----------------------------------------
 
     function _registration(address userAddress, address referrerAddress) private {
-        require(msg.value == 0.05 ether, "registration cost 0.05");
-        require(!isUserExists(userAddress), "user exists");
-        require(isUserExists(referrerAddress), "referrer not exists");
-
-        uint32 size;
-        assembly {
-            size := extcodesize(userAddress)
-        }
-        require(size == 0, "cannot be a contract");
+        _registrationValidation(userAddress, referrerAddress);
 
         User memory user = User({
             id: lastUserId,
@@ -183,6 +176,19 @@ contract Voomo {
         _updateX4Referrer(userAddress, findFreeX4Referrer(userAddress, 1), 1);
 
         emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
+    }
+
+    function _registrationValidation(address userAddress, address referrerAddress) private {
+        require(msg.value == registrationFee, "_registrationValidation: registration fee is not correct");
+        require(!_isUserExists(userAddress), "_registrationValidation: user exists");
+        require(_isUserExists(referrerAddress), "_registrationValidation: referrer not exists");
+
+        uint32 size;
+        assembly {
+            size := extcodesize(userAddress)
+        }
+
+        require(size == 0, "_registrationValidation: cannot be a contract");
     }
 
     function _updateX3Referrer(address userAddress, address referrerAddress, uint8 level) private {
