@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-contract Voomo {
+contract VoomoUpdated {
     address public owner;
     uint256 public lastUserId = 2;
     uint8 public constant LAST_LEVEL = 12;

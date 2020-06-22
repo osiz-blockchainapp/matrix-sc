@@ -176,7 +176,7 @@ contract Voomo {
         users[referrerAddress].partnersCount++;
 
         _newX3X4Member(userAddress);
-        _newX3X4AutoMember(userAddress);
+        _newX3X4AutoMember(userAddress, referrerAddress);
         lastUserId++;
 
         emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
@@ -504,9 +504,9 @@ contract Voomo {
     // PRIVATE (X3 X4 AUTO)
     // -----------------------------------------
 
-    function _newX3X4AutoMember(address userAddress) private {
+    function _newX3X4AutoMember(address userAddress, address referrerAddress) private {
         // Get upline ID of user
-        (address x3AutoUpline, address x4AutoUpline) = _detectUplinesAddresses(lastUserId);
+        (address x3AutoUpline, address x4AutoUpline) = _detectUplinesAddresses(referrerAddress);
 
         // Register x3Auto values
         users[userAddress].x3Auto[0].upline = x3AutoUpline;
@@ -538,29 +538,76 @@ contract Voomo {
         _x4AutoUplinePay(0.025 ether, users[x4AutoUpline].x4Auto[0].upline, userAddress);
     }
 
-    function _detectUplinesAddresses(uint256 id) private view returns(address, address) {
-        address x3AutoUplineAddress = owner;
-        address x4AutoUplineAddress = owner;
-
-        // When 1st member registered
-        if (id == 1) return (address(0), address(0));
-
-        // If owner address required
-        if (id < 3) return (x3AutoUplineAddress, x4AutoUplineAddress);
-
-        // Get X3_AUTO upline
-        if (id % 3 == 0)        x3AutoUplineAddress = idToAddress[id / 3];
-        else if (id % 3 == 1)   x3AutoUplineAddress = idToAddress[(id - 1) / 3];
-        else if (id % 3 == 2)   x3AutoUplineAddress = idToAddress[(id + 1) / 3];
-
-        // Get X4_AUTO upline
-        if (id % 2 == 0)        x4AutoUplineAddress = idToAddress[id / 2];
-        else                    x4AutoUplineAddress = idToAddress[(id - 1) / 2];
+    function _detectUplinesAddresses(address user) private view returns(address, address) {
+        address x3AutoUplineAddress = _detectX3AutoUpline(user);
+        address x4AutoUplineAddress = _detectX4AutoUpline(user);
 
         return (
             x3AutoUplineAddress,
             x4AutoUplineAddress
         );
+    }
+
+    function _detectX3AutoUpline(address userAddress) private view returns (address) {
+        if (users[userAddress].x3Auto[0].referrals.length < X3_AUTO_DOWNLINES_LIMIT) {
+            return userAddress;
+        }
+
+        address[] memory referrals = new address[](1515);
+        referrals[0] = users[userAddress].x3Auto[0].referrals[0];
+        referrals[1] = users[userAddress].x3Auto[0].referrals[1];
+        referrals[3] = users[userAddress].x3Auto[0].referrals[2];
+
+        address freeReferrer;
+        bool noFreeReferrer = true;
+
+        for (uint256 i = 0; i < 1515; i++) {
+            if (users[referrals[i]].x3Auto[0].referrals.length == X3_AUTO_DOWNLINES_LIMIT) {
+                if (i < 504) {
+                    referrals[(i + 1) * 3 - 1] = users[referrals[i]].x3Auto[0].referrals[0];
+                    referrals[(i + 1) * 3] = users[referrals[i]].x3Auto[0].referrals[1];
+                    referrals[(i + 1) * 3 + 1] = users[referrals[i]].x3Auto[0].referrals[2];
+                }
+            } else {
+                noFreeReferrer = false;
+                freeReferrer = referrals[i];
+                break;
+            }
+        }
+
+        require(!noFreeReferrer, 'No Free Referrer');
+
+        return freeReferrer;
+    }
+
+    function _detectX4AutoUpline(address userAddress) private view returns (address) {
+        if (users[userAddress].x4Auto[0].firstLevelReferrals.length < X4_AUTO_DOWNLINES_LIMIT) {
+            return userAddress;
+        }
+
+        address[] memory referrals = new address[](994);
+        referrals[0] = users[userAddress].x4Auto[0].firstLevelReferrals[0];
+        referrals[1] = users[userAddress].x4Auto[0].firstLevelReferrals[1];
+
+        address freeReferrer;
+        bool noFreeReferrer = true;
+
+        for (uint256 i = 0; i < 994; i++) {
+            if (users[referrals[i]].x4Auto[0].firstLevelReferrals.length == X4_AUTO_DOWNLINES_LIMIT) {
+                if (i < 496) {
+                    referrals[(i + 1) * 2] = users[referrals[i]].x4Auto[0].firstLevelReferrals[0];
+                    referrals[(i + 1) * 2 + 1] = users[referrals[i]].x4Auto[0].firstLevelReferrals[1];
+                }
+            } else {
+                noFreeReferrer = false;
+                freeReferrer = referrals[i];
+                break;
+            }
+        }
+
+        require(!noFreeReferrer, 'No Free Referrer');
+
+        return freeReferrer;
     }
 
     function _x3AutoUpLevel(address user, uint8 level) private {
@@ -697,8 +744,8 @@ contract Voomo {
         return _findFreeX4AutoReferrer(userAddress);
     }
 
-    function findCurrentIdAutoUplines(uint256 userId) external view returns(address, address, uint256, uint256) {
-        (address x3UplineAddr, address x4UplineAddr) = _detectUplinesAddresses(userId);
+    function findAutoUplines(address referrer) external view returns(address, address, uint256, uint256) {
+        (address x3UplineAddr, address x4UplineAddr) = _detectUplinesAddresses(referrer);
         return (
             x3UplineAddr,
             x4UplineAddr,
@@ -707,12 +754,8 @@ contract Voomo {
         );
     }
 
-    function findX4AutoReinvestReceiver(address user) external view returns (address) {
-        return _getX4AutoReinvestReceiver(user);
-    }
-
-    function findAutoUplines() external view returns(address, address, uint256, uint256) {
-        (address x3UplineAddr, address x4UplineAddr) = _detectUplinesAddresses(lastUserId);
+    function findAutoUplines(uint256 referrerId) external view returns(address, address, uint256, uint256) {
+        (address x3UplineAddr, address x4UplineAddr) = _detectUplinesAddresses(userIds[referrerId]);
         return (
             x3UplineAddr,
             x4UplineAddr,
