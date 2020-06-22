@@ -165,8 +165,8 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
         it('Check status of owner after deployment', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
-            compareX3AutoValues(ownerX3Auto, [0, 0, 0, ZERO_ADDRESS, 0, []])
-            compareX4AutoValues(ownerX4Auto, [0, 0, 0, ZERO_ADDRESS, 0, [], []])
+            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, 0, []])
+            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, 0, [], []])
 
             const ownerExists = await contractInstance.isUserExists(owner)
             assert.equal(ownerExists, true)
@@ -178,37 +178,13 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
             await contractInstance.registration(owner, { from: alice, value: REGISTRATION_FEE })
 
             const balanceIncreased = await balanceTracker.delta()
-            assert.equal(balanceIncreased.toString(), ether('0.1').toString())
+            assert.equal(balanceIncreased.toString(), ether('0.075').toString())
 
             const userExists = await contractInstance.isUserExists(alice)
             assert.equal(userExists, true)
         })
 
         it('Check status of owner and alice after registration', async () => {
-            const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
-            const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
-            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, 0, []])
-            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, 0, [], []])
-
-            const aliceX3Auto = await contractInstance.getUserX3Auto(alice)
-            const aliceX4Auto = await contractInstance.getUserX4Auto(alice)
-            compareX3AutoValues(aliceX3Auto, [0, 0, 0, ZERO_ADDRESS, 0, []])
-            compareX4AutoValues(aliceX4Auto, [0, 0, 0, ZERO_ADDRESS, 0, [], []])
-        })
-
-        // Add Alice
-        it('Register new member under alice', async () => {
-            const balanceTracker = await balance.tracker(owner)
-            await contractInstance.registration(alice, { from: bob, value: REGISTRATION_FEE })
-
-            const balanceIncreased = await balanceTracker.delta()
-            assert.equal(balanceIncreased.toString(), ether('0.05').toString())
-
-            const userExists = await contractInstance.isUserExists(bob)
-            assert.equal(userExists, true)
-        })
-
-        it('Check status of owner and alice after 2nd user registration', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
             compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, ether('0.025'), [alice]])
@@ -218,34 +194,21 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
             const aliceX4Auto = await contractInstance.getUserX4Auto(alice)
             compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, 0, []])
             compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, 0, [], []])
-
-            const bobX3Auto = await contractInstance.getUserX3Auto(bob)
-            const bobX4Auto = await contractInstance.getUserX4Auto(bob)
-            compareX3AutoValues(bobX3Auto, [0, 0, 0, ZERO_ADDRESS, 0, []])
-            compareX4AutoValues(bobX4Auto, [0, 0, 0, ZERO_ADDRESS, 0, [], []])
         })
 
-        // Add Bob
-        it('Register new member under bob', async () => {
-            const ownerBalanceTracker = await balance.tracker(owner)
-            const aliceBalanceTracker = await balance.tracker(alice)
-            const bobBalanceTracker = await balance.tracker(bob)
+        // Add Alice
+        it('Register new member under alice', async () => {
+            const balanceTracker = await balance.tracker(owner)
+            await contractInstance.registration(alice, { from: bob, value: REGISTRATION_FEE })
 
-            await contractInstance.registration(bob, { from: john, value: REGISTRATION_FEE })
+            const balanceIncreased = await balanceTracker.delta()
+            assert.equal(balanceIncreased.toString(), ether('0.1').toString())
 
-            const ownerBalanceIncreased = await ownerBalanceTracker.delta()
-            const aliceBalanceIncreased = await aliceBalanceTracker.delta()
-            const bobBalanceIncreased = await bobBalanceTracker.delta()
-
-            assert.equal(ownerBalanceIncreased.toString(), ether('0.075').toString())
-            assert.equal(bobBalanceIncreased.toString(), ether('0.025').toString())
-            assert.equal(aliceBalanceIncreased.toString(), ether('0.025').toString())
-
-            const userExists = await contractInstance.isUserExists(john)
+            const userExists = await contractInstance.isUserExists(bob)
             assert.equal(userExists, true)
         })
 
-        it('Check status of owner, alice and bob after 3th user registration', async () => {
+        it('Check status of owner and alice after 2nd user registration', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
             compareX3AutoValues(ownerX3Auto, [1, 2, 0, ZERO_ADDRESS, 0, [alice, bob]])
@@ -260,37 +223,29 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
             const bobX4Auto = await contractInstance.getUserX4Auto(bob)
             compareX3AutoValues(bobX3Auto, [3, 1, 1, owner, 0, []])
             compareX4AutoValues(bobX4Auto, [3, 1, 1, owner, 0, [], []])
-
-            const johnX3Auto = await contractInstance.getUserX3Auto(john)
-            const johnX4Auto = await contractInstance.getUserX4Auto(john)
-            compareX3AutoValues(johnX3Auto, [0, 0, 0, ZERO_ADDRESS, 0, []])
-            compareX4AutoValues(johnX4Auto, [0, 0, 0, ZERO_ADDRESS, 0, [], []])
         })
 
-        // Add John
-        it('Register new member under john', async () => {
+        // Add Bob
+        it('Register new member under bob', async () => {
             const ownerBalanceTracker = await balance.tracker(owner)
             const aliceBalanceTracker = await balance.tracker(alice)
             const bobBalanceTracker = await balance.tracker(bob)
-            const johnBalanceTracker = await balance.tracker(john)
 
-            await contractInstance.registration(john, { from: tony, value: REGISTRATION_FEE })
+            await contractInstance.registration(bob, { from: john, value: REGISTRATION_FEE })
 
             const ownerBalanceIncreased = await ownerBalanceTracker.delta()
             const aliceBalanceIncreased = await aliceBalanceTracker.delta()
             const bobBalanceIncreased = await bobBalanceTracker.delta()
-            const johnBalanceIncreased = await johnBalanceTracker.delta()
 
             assert.equal(ownerBalanceIncreased.toString(), ether('0.025').toString())
-            assert.equal(aliceBalanceIncreased.toString(), ether('0.0').toString())
             assert.equal(bobBalanceIncreased.toString(), ether('0.025').toString())
-            assert.equal(johnBalanceIncreased.toString(), ether('0.025').toString())
+            assert.equal(aliceBalanceIncreased.toString(), ether('0.025').toString())
 
-            const userExists = await contractInstance.isUserExists(tony)
+            const userExists = await contractInstance.isUserExists(john)
             assert.equal(userExists, true)
         })
 
-        it('Check status of owner, alice, bob, john after 4th user registration', async () => {
+        it('Check status of owner, alice and bob after 3th user registration', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
             compareX3AutoValues(ownerX3Auto, [1, 2, 0, ZERO_ADDRESS, 0, [alice, bob, john]])
@@ -310,11 +265,56 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
             const johnX4Auto = await contractInstance.getUserX4Auto(john)
             compareX3AutoValues(johnX3Auto, [4, 1, 1, owner, 0, []])
             compareX4AutoValues(johnX4Auto, [4, 1, 2, alice, 0, [], []])
+        })
+
+        // Add John
+        it('Register new member under john', async () => {
+            const ownerBalanceTracker = await balance.tracker(owner)
+            const aliceBalanceTracker = await balance.tracker(alice)
+            const bobBalanceTracker = await balance.tracker(bob)
+            const johnBalanceTracker = await balance.tracker(john)
+
+            await contractInstance.registration(john, { from: tony, value: REGISTRATION_FEE })
+
+            const ownerBalanceIncreased = await ownerBalanceTracker.delta()
+            const aliceBalanceIncreased = await aliceBalanceTracker.delta()
+            const bobBalanceIncreased = await bobBalanceTracker.delta()
+            const johnBalanceIncreased = await johnBalanceTracker.delta()
+
+            assert.equal(ownerBalanceIncreased.toString(), ether('0.05').toString())
+            assert.equal(aliceBalanceIncreased.toString(), ether('0.0').toString())
+            assert.equal(bobBalanceIncreased.toString(), ether('0.025').toString())
+            assert.equal(johnBalanceIncreased.toString(), ether('0.025').toString())
+
+            const userExists = await contractInstance.isUserExists(tony)
+            assert.equal(userExists, true)
+        })
+
+        it('Check status of owner, alice, bob, john after 4th user registration', async () => {
+            const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
+            const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
+            compareX3AutoValues(ownerX3Auto, [1, 2, 0, ZERO_ADDRESS, 0, [alice, bob, john]])
+            compareX4AutoValues(ownerX4Auto, [1, 2, 0, ZERO_ADDRESS, 0, [alice, bob], [john, tony]])
+
+            const aliceX3Auto = await contractInstance.getUserX3Auto(alice)
+            const aliceX4Auto = await contractInstance.getUserX4Auto(alice)
+            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, ether('0.025'), [tony]])
+            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, 0, [john, tony], []])
+
+            const bobX3Auto = await contractInstance.getUserX3Auto(bob)
+            const bobX4Auto = await contractInstance.getUserX4Auto(bob)
+            compareX3AutoValues(bobX3Auto, [3, 1, 1, owner, 0, []])
+            compareX4AutoValues(bobX4Auto, [3, 1, 1, owner, 0, [], []])
+
+            const johnX3Auto = await contractInstance.getUserX3Auto(john)
+            const johnX4Auto = await contractInstance.getUserX4Auto(john)
+            compareX3AutoValues(johnX3Auto, [4, 1, 1, owner, 0, []])
+            compareX4AutoValues(johnX4Auto, [4, 1, 2, alice, 0, [], []])
 
             const tonyX3Auto = await contractInstance.getUserX3Auto(tony)
             const tonyX4Auto = await contractInstance.getUserX4Auto(tony)
-            compareX3AutoValues(tonyX3Auto, [0, 0, 0, ZERO_ADDRESS, 0, []])
-            compareX4AutoValues(tonyX4Auto, [0, 0, 0, ZERO_ADDRESS, 0, [], []])
+            compareX3AutoValues(tonyX3Auto, [5, 1, 2, alice, 0, []])
+            compareX4AutoValues(tonyX4Auto, [5, 1, 2, alice, 0, [], []])
         })
     })
 
@@ -326,20 +326,20 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
                 const balanceTracker = await balance.tracker(accounts[0])
 
                 // Pre-payment values from contract
-                const newUserId = (await contractInstance.autoSystemLastUserId.call()).toString()
+                const newUserId = (await contractInstance.lastUserId.call()).toString()
                 const { x3Upline, x4Upline } = await getUplines()
 
                 const newAutoUser = {
                     id: newUserId,
-                    addr: accounts[i - 1]
+                    addr: accounts[i]
                 }
 
                 // Register user
-                const receipt = await contractInstance.registration(newAutoUser.addr, { from: accounts[i], value: REGISTRATION_FEE })
+                const receipt = await contractInstance.registration(owner, { from: accounts[i], value: REGISTRATION_FEE })
                 console.log('#', newAutoUser.id, 'joined')
 
                 // Validate user state after registration
-                await userRegistrationChecks(newAutoUser.id, x3Upline, x4Upline, accounts[i - 1])
+                await userRegistrationChecks(newAutoUser.id, x3Upline, x4Upline, accounts[i])
 
                 const eventData = await filterAutoEventLogs(receipt)
                 console.table(eventData)

@@ -3,9 +3,11 @@ pragma solidity ^0.5.0;
 contract Voomo {
     address public owner;
     uint256 public lastUserId = 2;
-    uint256 public autoSystemLastUserId = 1;
-    uint8 public constant LAST_LEVEL = 12;
-    uint256 public constant registrationFee = 0.1 ether;
+
+    uint8 private constant LAST_LEVEL = 12;
+    uint256 private constant X3_AUTO_DOWNLINES_LIMIT = 3;
+    uint256 private constant X4_AUTO_DOWNLINES_LIMIT = 2;
+    uint256 private constant REGISTRATION_FEE = 0.1 ether;
 
     struct X3 {
         address currentReferrer;
@@ -43,7 +45,6 @@ contract Voomo {
 
     struct User {
         uint256 id;
-        uint256 autoSystemId;
 
         address referrer;
         uint256 partnersCount;
@@ -61,7 +62,6 @@ contract Voomo {
 
     mapping(address => User) public users;
     mapping(uint256 => address) public idToAddress;
-    mapping(uint256 => address) public autoIdToAddress;
     mapping(uint256 => address) public userIds;
     mapping(address => uint256) public balances;
     mapping(uint8 => uint256) public levelPrice;
@@ -101,21 +101,24 @@ contract Voomo {
 
         User memory user = User({
             id: 1,
-            autoSystemId: 0,
             referrer: address(0),
             partnersCount: uint256(0)
         });
 
-        users[ownerAddress] = user;
+        users[owner] = user;
 
-        userIds[1] = ownerAddress;
-        idToAddress[1] = ownerAddress;
+        userIds[1] = owner;
+        idToAddress[1] = owner;
 
         // Init levels for X3 and X4 Matrix
         for (uint8 i = 1; i <= LAST_LEVEL; i++) {
-            users[ownerAddress].activeX3Levels[i] = true;
-            users[ownerAddress].activeX4Levels[i] = true;
+            users[owner].activeX3Levels[i] = true;
+            users[owner].activeX4Levels[i] = true;
         }
+
+        // Init levels for X3 and X4 AUTO Matrix
+        users[owner].x3Auto[0].level = 1;
+        users[owner].x4Auto[0].level = 1;
     }
 
     // -----------------------------------------
@@ -161,7 +164,6 @@ contract Voomo {
 
         User memory user = User({
             id: lastUserId,
-            autoSystemId: 0,
             referrer: referrerAddress,
             partnersCount: 0
         });
@@ -174,20 +176,15 @@ contract Voomo {
         users[referrerAddress].partnersCount++;
 
         _newX3X4Member(userAddress);
+        _newX3X4AutoMember(userAddress);
         lastUserId++;
 
-        if (users[referrerAddress].partnersCount == 1) {
-            // Register AUTO systems for referrer user
-            _newX3X4AutoMember(referrerAddress);
-            emit AutoSystemRegistration(referrerAddress, msg.sender, autoSystemLastUserId);
-            autoSystemLastUserId++;
-        }
-
         emit Registration(userAddress, referrerAddress, users[userAddress].id, users[referrerAddress].id);
+        emit AutoSystemRegistration(referrerAddress, msg.sender, lastUserId);
     }
 
     function _registrationValidation(address userAddress, address referrerAddress) private {
-        require(msg.value == registrationFee, "_registrationValidation: registration fee is not correct");
+        require(msg.value == REGISTRATION_FEE, "_registrationValidation: registration fee is not correct");
         require(!_isUserExists(userAddress), "_registrationValidation: user exists");
         require(_isUserExists(referrerAddress), "_registrationValidation: referrer not exists");
 
@@ -201,10 +198,6 @@ contract Voomo {
 
     function _isUserExists(address user) private view returns (bool) {
         return (users[user].id != 0);
-    }
-
-    function _isUserAutoSystemActve(address user) private view returns (bool) {
-        return (users[user].autoSystemId != 0);
     }
 
     function _send(address to, uint256 value) private {
@@ -512,20 +505,16 @@ contract Voomo {
     // -----------------------------------------
 
     function _newX3X4AutoMember(address userAddress) private {
-        autoIdToAddress[autoSystemLastUserId] = userAddress;
-
         // Get upline ID of user
-        (address x3AutoUpline, address x4AutoUpline) = _detectUplinesAddresses(autoSystemLastUserId);
-
-        users[userAddress].autoSystemId = autoSystemLastUserId;
+        (address x3AutoUpline, address x4AutoUpline) = _detectUplinesAddresses(lastUserId);
 
         // Register x3Auto values
         users[userAddress].x3Auto[0].upline = x3AutoUpline;
-        users[userAddress].x3Auto[0].upline_id = users[x3AutoUpline].autoSystemId;
+        users[userAddress].x3Auto[0].upline_id = users[x3AutoUpline].id;
 
         // Register x4Auto values
         users[userAddress].x4Auto[0].upline = x4AutoUpline;
-        users[userAddress].x4Auto[0].upline_id = users[x4AutoUpline].autoSystemId;
+        users[userAddress].x4Auto[0].upline_id = users[x4AutoUpline].id;
 
         if (userAddress != owner) {
             // Add member to x3Auto upline referrals
@@ -687,6 +676,7 @@ contract Voomo {
             userAddress = upline;
         }
     }
+
     // -----------------------------------------
     // GETTERS
     // -----------------------------------------
@@ -712,13 +702,23 @@ contract Voomo {
         return (
             x3UplineAddr,
             x4UplineAddr,
-            users[x3UplineAddr].autoSystemId,
-            users[x4UplineAddr].autoSystemId
+            users[x3UplineAddr].id,
+            users[x4UplineAddr].id
         );
     }
 
     function findX4AutoReinvestReceiver(address user) external view returns (address) {
         return _getX4AutoReinvestReceiver(user);
+    }
+
+    function findAutoUplines() external view returns(address, address, uint256, uint256) {
+        (address x3UplineAddr, address x4UplineAddr) = _detectUplinesAddresses(lastUserId);
+        return (
+            x3UplineAddr,
+            x4UplineAddr,
+            users[x3UplineAddr].id,
+            users[x4UplineAddr].id
+        );
     }
 
     function usersActiveX3Levels(address userAddress, uint8 level) external view returns (bool) {
@@ -770,7 +770,7 @@ contract Voomo {
         address[] memory referrals
     ) {
         return (
-            users[user].autoSystemId,
+            users[user].id,
             users[user].x3Auto[0].level,
             users[user].x3Auto[0].upline_id,
             users[user].x3Auto[0].upline,
@@ -789,7 +789,7 @@ contract Voomo {
         address[] memory secondLevelReferrals
     ) {
         return (
-            users[user].autoSystemId,
+            users[user].id,
             users[user].x4Auto[0].level,
             users[user].x4Auto[0].upline_id,
             users[user].x4Auto[0].upline,
@@ -801,9 +801,5 @@ contract Voomo {
 
     function isUserExists(address user) external view returns (bool) {
         return _isUserExists(user);
-    }
-
-    function isUserAutoSystemActve(address user) external view returns (bool) {
-        return _isUserAutoSystemActve(user);
     }
 }
