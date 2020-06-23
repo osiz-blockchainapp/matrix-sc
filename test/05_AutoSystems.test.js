@@ -346,8 +346,14 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
             let referrer = owner
 
             for (let i = 1; i < accounts.length; i ++) {
-                if (i >= 200) {
+                if (i > 200 && i < 500) {
                     if ((i - 200) % 3 === 0) {
+                        referrer = accounts[i - 1]
+                    }
+                }
+
+                if (i > 500 && i < 800) {
+                    if ((i - 500) % 6 === 0) {
                         referrer = accounts[i - 1]
                     }
                 }

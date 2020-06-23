@@ -529,10 +529,6 @@ contract Voomo {
         _x3AutoUpLevel(userAddress, 1);
         _x4AutoUpLevel(userAddress, 1);
 
-        if (x4AutoUpline == owner) {
-            x4AutoUpline = address(0);
-        }
-
         // Check the state and pay to uplines
         _x3AutoUplinePay(0.025 ether, x3AutoUpline, userAddress);
         _x4AutoUplinePay(0.025 ether, users[x4AutoUpline].x4Auto[0].upline, userAddress);
@@ -621,7 +617,15 @@ contract Voomo {
     }
 
     function _getX4AutoReinvestReceiver(address user) private view returns (address) {
-        return users[users[user].x4Auto[0].upline].x4Auto[0].upline;
+        address receiver = owner;
+
+        if (
+            users[user].x4Auto[0].upline != address(0) &&
+            users[users[user].x4Auto[0].upline].x4Auto[0].upline != address(0)) {
+            receiver = users[users[user].x4Auto[0].upline].x4Auto[0].upline;
+        }
+
+        return receiver;
     }
 
     function _x3AutoUplinePay(uint256 value, address upline, address downline) private {
@@ -700,7 +704,9 @@ contract Voomo {
                 return owner;
             }
 
-            if (users[upline].x3Auto[0].referrals[2] != userAddress) {
+            if (
+                users[upline].x3Auto[0].referrals.length < X3_AUTO_DOWNLINES_LIMIT ||
+                users[upline].x3Auto[0].referrals[2] != userAddress) {
                 return upline;
             }
 
@@ -716,7 +722,9 @@ contract Voomo {
                 return owner;
             }
 
-            if (users[upline].x4Auto[0].secondLevelReferrals[3] != userAddress) {
+            if (
+                users[upline].x4Auto[0].secondLevelReferrals.length < 4 ||
+                users[upline].x4Auto[0].secondLevelReferrals[3] != userAddress) {
                 return upline;
             }
 
