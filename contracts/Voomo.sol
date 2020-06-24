@@ -171,7 +171,6 @@ contract Voomo {
         users[userAddress] = user;
         userIds[lastUserId] = userAddress;
         idToAddress[lastUserId] = userAddress;
-        users[userAddress].referrer = referrerAddress;
 
         users[referrerAddress].partnersCount++;
 
