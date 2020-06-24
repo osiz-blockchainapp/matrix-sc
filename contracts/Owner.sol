@@ -4,7 +4,6 @@ interface IVoomo {
     function checkState() external;
 }
 
-
 contract Owner {
     IVoomo public voomo;
     address payable public owner1;
@@ -26,7 +25,7 @@ contract Owner {
     }
 
     function () external payable {
-        _deposited(msg.value);
+        // ETH received
     }
 
     function deposited() external payable {

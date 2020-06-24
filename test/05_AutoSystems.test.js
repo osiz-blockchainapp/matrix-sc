@@ -29,7 +29,6 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
     * level,
     * upline_id
     * upline
-    * profit
     * referrals []
     */
     const compareX3AutoValues = (contractState, expectedState) => {
@@ -38,8 +37,7 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
             assert.equal(contractState['level'].toString(), expectedState[1].toString()),
             assert.equal(contractState['upline_id'].toString(), expectedState[2].toString()),
             assert.equal(contractState['upline'].toString(), expectedState[3].toString()),
-            assert.equal(contractState['profit'].toString(), expectedState[4].toString()),
-            assert.deepEqual(contractState['referrals'], expectedState[5])
+            assert.deepEqual(contractState['referrals'], expectedState[4])
         )
     }
 
@@ -58,9 +56,8 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
             assert.equal(contractState['level'].toString(), expectedState[1].toString()),
             assert.equal(contractState['upline_id'].toString(), expectedState[2].toString()),
             assert.equal(contractState['upline'].toString(), expectedState[3].toString()),
-            assert.equal(contractState['profit'].toString(), expectedState[4].toString()),
-            assert.deepEqual(contractState['firstLevelReferrals'], expectedState[5]),
-            assert.deepEqual(contractState['secondLevelReferrals'], expectedState[6])
+            assert.deepEqual(contractState['firstLevelReferrals'], expectedState[4]),
+            assert.deepEqual(contractState['secondLevelReferrals'], expectedState[5])
         )
     }
 
@@ -87,13 +84,13 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
         const userX3Auto = await contractInstance.getUserX3Auto(userAddr)
         const userX4Auto = await contractInstance.getUserX4Auto(userAddr)
 
-        compareX3AutoValues(userX3Auto, [currentLastId, 1, x3Upline.id, x3Upline.addr, 0, []])
-        compareX4AutoValues(userX4Auto, [currentLastId, 1, x4Upline.id, x4Upline.addr, 0, [], []])
+        compareX3AutoValues(userX3Auto, [currentLastId, 1, x3Upline.id, x3Upline.addr, []])
+        compareX4AutoValues(userX4Auto, [currentLastId, 1, x4Upline.id, x4Upline.addr, [], []])
     }
 
     const filterAutoEventLogs = async receipt => {
         const { logs } = receipt
-        const autoEvents = ['AutoSystemLevelUp', 'AutoSystemEarning', 'AutoSystemReinvest']
+        const autoEvents = ['AutoSystemLevelUp', 'AutoSystemEarning', 'AutoSystemReinvest', 'EthSent']
         const filteredLogs = logs.filter(log => autoEvents.includes(log['event']))
 
         let modifiedEvents = filteredLogs.map(log => {
@@ -116,6 +113,12 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
                     from: log['args']['from'],
                     value: (log['args']['amount'].toString() / 10**18).toString(),
                     matrix: log['args']['matrix'].toString()
+                }
+            } else if (log['event'] == autoEvents[3]) {
+                params = {
+                    to: log['args']['to'],
+                    amount: (log['args']['amount'].toString() / 10**18).toString(),
+                    type: log['args']['isAutoSystem'] === true ? 'AUTO' : 'MANUAL'
                 }
             }
 
@@ -154,6 +157,9 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
                     event['from'] = fromX4Auto['id'].toString()
                     event['matrix'] = 'X4'
                 }
+            } else if (event['event'] == autoEvents[3]) {
+                const toX3Auto = await contractInstance.getUserX3Auto(event['to'])
+                event['to'] = toX3Auto['id'].toString()
             }
         }
 
@@ -176,8 +182,8 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
         it('Check status of owner after deployment', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
-            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, 0, []])
-            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, 0, [], []])
+            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, []])
+            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, [], []])
 
             const ownerExists = await contractInstance.isUserExists(owner)
             assert.equal(ownerExists, true)
@@ -198,13 +204,13 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
         it('Check status of owner and alice after registration', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
-            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, ether('0.025'), [alice]])
-            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, 0, [alice], []])
+            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, [alice]])
+            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, [alice], []])
 
             const aliceX3Auto = await contractInstance.getUserX3Auto(alice)
             const aliceX4Auto = await contractInstance.getUserX4Auto(alice)
-            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, 0, []])
-            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, 0, [], []])
+            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, []])
+            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, [], []])
         })
 
         // Add Bob
@@ -222,18 +228,18 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
         it('Check status of owner and alice after 2nd user registration', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
-            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, ether('0.025'), [alice]])
-            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, ether('0.025'), [alice], [bob]])
+            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, [alice]])
+            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, [alice], [bob]])
 
             const aliceX3Auto = await contractInstance.getUserX3Auto(alice)
             const aliceX4Auto = await contractInstance.getUserX4Auto(alice)
-            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, ether('0.025'), [bob]])
-            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, 0, [bob], []])
+            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, [bob]])
+            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, [bob], []])
 
             const bobX3Auto = await contractInstance.getUserX3Auto(bob)
             const bobX4Auto = await contractInstance.getUserX4Auto(bob)
-            compareX3AutoValues(bobX3Auto, [3, 1, 2, alice, 0, []])
-            compareX4AutoValues(bobX4Auto, [3, 1, 2, alice, 0, [], []])
+            compareX3AutoValues(bobX3Auto, [3, 1, 2, alice, []])
+            compareX4AutoValues(bobX4Auto, [3, 1, 2, alice, [], []])
         })
 
         // Add John
@@ -259,23 +265,23 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
         it('Check status of owner, alice and bob after 3th user registration', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
-            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, ether('0.025'), [alice]])
+            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, [alice]])
             compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, ether('0.025'), [alice], [bob]])
 
             const aliceX3Auto = await contractInstance.getUserX3Auto(alice)
             const aliceX4Auto = await contractInstance.getUserX4Auto(alice)
-            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, ether('0.025'), [bob]])
-            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, ether('0.025'), [bob], [john]])
+            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, [bob]])
+            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, [bob], [john]])
 
             const bobX3Auto = await contractInstance.getUserX3Auto(bob)
             const bobX4Auto = await contractInstance.getUserX4Auto(bob)
-            compareX3AutoValues(bobX3Auto, [3, 1, 2, alice, ether('0.025'), [john]])
-            compareX4AutoValues(bobX4Auto, [3, 1, 2, alice, 0, [john], []])
+            compareX3AutoValues(bobX3Auto, [3, 1, 2, alice, [john]])
+            compareX4AutoValues(bobX4Auto, [3, 1, 2, alice, [john], []])
 
             const johnX3Auto = await contractInstance.getUserX3Auto(john)
             const johnX4Auto = await contractInstance.getUserX4Auto(john)
-            compareX3AutoValues(johnX3Auto, [4, 1, 3, bob, 0, []])
-            compareX4AutoValues(johnX4Auto, [4, 1, 3, bob, 0, [], []])
+            compareX3AutoValues(johnX3Auto, [4, 1, 3, bob, []])
+            compareX4AutoValues(johnX4Auto, [4, 1, 3, bob, [], []])
         })
 
         // Add Tony
@@ -304,28 +310,28 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
         it('Check status of owner, alice, bob, john after 4th user registration', async () => {
             const ownerX3Auto = await contractInstance.getUserX3Auto(owner)
             const ownerX4Auto = await contractInstance.getUserX4Auto(owner)
-            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, ether('0.025'), [alice]])
-            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, ether('0.025'), [alice], [bob]])
+            compareX3AutoValues(ownerX3Auto, [1, 1, 0, ZERO_ADDRESS, [alice]])
+            compareX4AutoValues(ownerX4Auto, [1, 1, 0, ZERO_ADDRESS, [alice], [bob]])
 
             const aliceX3Auto = await contractInstance.getUserX3Auto(alice)
             const aliceX4Auto = await contractInstance.getUserX4Auto(alice)
-            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, ether('0.025'), [bob]])
-            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, ether('0.025'), [bob], [john]])
+            compareX3AutoValues(aliceX3Auto, [2, 1, 1, owner, [bob]])
+            compareX4AutoValues(aliceX4Auto, [2, 1, 1, owner, [bob], [john]])
 
             const bobX3Auto = await contractInstance.getUserX3Auto(bob)
             const bobX4Auto = await contractInstance.getUserX4Auto(bob)
-            compareX3AutoValues(bobX3Auto, [3, 1, 2, alice, ether('0.025'), [john]])
-            compareX4AutoValues(bobX4Auto, [3, 1, 2, alice, ether('0.025'), [john], [tony]])
+            compareX3AutoValues(bobX3Auto, [3, 1, 2, alice, [john]])
+            compareX4AutoValues(bobX4Auto, [3, 1, 2, alice, [john], [tony]])
 
             const johnX3Auto = await contractInstance.getUserX3Auto(john)
             const johnX4Auto = await contractInstance.getUserX4Auto(john)
-            compareX3AutoValues(johnX3Auto, [4, 1, 3, bob, ether('0.025'), [tony]])
-            compareX4AutoValues(johnX4Auto, [4, 1, 3, bob, 0, [tony], []])
+            compareX3AutoValues(johnX3Auto, [4, 1, 3, bob, [tony]])
+            compareX4AutoValues(johnX4Auto, [4, 1, 3, bob, [tony], []])
 
             const tonyX3Auto = await contractInstance.getUserX3Auto(tony)
             const tonyX4Auto = await contractInstance.getUserX4Auto(tony)
-            compareX3AutoValues(tonyX3Auto, [5, 1, 4, john, 0, []])
-            compareX4AutoValues(tonyX4Auto, [5, 1, 4, john, 0, [], []])
+            compareX3AutoValues(tonyX3Auto, [5, 1, 4, john, []])
+            compareX4AutoValues(tonyX4Auto, [5, 1, 4, john, [], []])
         })
     })
 
@@ -377,12 +383,16 @@ contract('Voomo smart contract tests (X3/X4 AUTO)', (accounts) => {
                 await userRegistrationChecks(newAutoUser.id, x3Upline, x4Upline, accounts[i])
 
                 const eventData = await filterAutoEventLogs(receipt)
+                eventData.push({
+                    'x3Upline': x3Upline['id'],
+                    'x4Upline': x4Upline['id']
+                })
                 console.table(eventData)
 
                 const balanceIncreased = await balanceTracker.delta()
                 if (balanceIncreased.toString() !== '0') {
                     ownerProfit = ownerProfit + (balanceIncreased.toString() / 10**18)
-                    console.log('User ID 1 Profit increased:', ownerProfit.toFixed(3), 'ETH')
+                    console.log('User ID 1 Profit increased by ', (balanceIncreased.toString() / 10**18) + 'ETH /', ownerProfit.toFixed(3), 'ETH')
                 }
 
                 console.log('------------------------')
